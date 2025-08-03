@@ -1,19 +1,51 @@
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, EmailStr
+from typing import Optional, List, Dict, Any, Union
 from datetime import date, datetime
 
 
-# Project schemas
-class ProjectBase(BaseModel):
+# Authentication schemas
+class AdminUserBase(BaseModel):
+    email: EmailStr
+
+
+class AdminUserCreate(AdminUserBase):
+    password: str
+
+
+class AdminUser(AdminUserBase):
+    id: int
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+# Product schemas (renamed from Project)
+class ProductBase(BaseModel):
     name: str
     description: Optional[str] = None
 
 
-class ProjectCreate(ProjectBase):
+class ProductCreate(ProductBase):
     pass
 
 
-class Project(ProjectBase):
+class Product(ProductBase):
     id: int
     created_at: datetime
 
@@ -21,63 +53,94 @@ class Project(ProjectBase):
         from_attributes = True
 
 
-# Feedback schemas
-class FeedbackBase(BaseModel):
-    area: str
-    comment: Optional[str] = None
-    tool_recommendation: Optional[str] = None
-    marked_for_improvement: bool = False
+# Security Scorecard specific fields
+class SecurityScorecard(BaseModel):
+    sast: bool
+    dast: bool
+    sast_dast_in_ci: bool
+    triaging_findings: bool
+    secrets_scanning: bool
+    sca_tool_used: bool
+    cve_alerts: bool
+    pr_enforcement: bool
+    training: bool
+    threat_modeling: bool
+    bug_bounty_policy: bool
+    compliance: bool
+    secure_design_reviews: bool
+    predeployment_threat_modeling: bool
 
 
-class FeedbackCreate(FeedbackBase):
-    pass
+# Automation Scorecard fields
+class AutomationScorecard(BaseModel):
+    ci_pipeline: bool
+    automated_testing: bool
+    deployment_automation: bool
+    monitoring_alerts: bool
+    infrastructure_as_code: bool
 
 
-class Feedback(FeedbackBase):
-    id: int
-    scorecard_id: int
-    created_at: datetime
+# Performance Scorecard fields
+class PerformanceScorecard(BaseModel):
+    load_testing: bool
+    performance_monitoring: bool
+    caching_strategy: bool
+    database_optimization: bool
+    cdn_usage: bool
 
-    class Config:
-        from_attributes = True
+
+# CI/CD Scorecard fields
+class CICDScorecard(BaseModel):
+    automated_builds: bool
+    automated_tests: bool
+    code_quality_gates: bool
+    deployment_pipeline: bool
+    rollback_strategy: bool
+    environment_parity: bool
 
 
 # Scorecard schemas
 class ScorecardBase(BaseModel):
-    project_id: int
+    product_id: int
+    category: str  # "automation", "performance", "security", "cicd"
     date: date
-    automation_score: float
-    performance_score: float
-    security_score: float
-    cicd_score: float
 
 
 class ScorecardCreate(ScorecardBase):
-    feedback: Optional[List[FeedbackCreate]] = []
+    breakdown: Union[SecurityScorecard, AutomationScorecard, PerformanceScorecard, CICDScorecard]
 
 
 class Scorecard(ScorecardBase):
     id: int
+    score: float
+    breakdown: Dict[str, Any]
+    feedback: Optional[str] = None
+    tool_suggestions: Optional[str] = None
     created_at: datetime
-    project: Project
-    feedback: List[Feedback] = []
+    product: Product
 
     class Config:
         from_attributes = True
 
 
 # Response schemas
-class ScorecardWithProject(BaseModel):
+class ScorecardWithProduct(BaseModel):
     id: int
-    project_id: int
-    project_name: str
+    product_id: int
+    product_name: str
+    category: str
     date: date
-    automation_score: float
-    performance_score: float
-    security_score: float
-    cicd_score: float
+    score: float
+    breakdown: Dict[str, Any]
+    feedback: Optional[str] = None
+    tool_suggestions: Optional[str] = None
     created_at: datetime
-    feedback: List[Feedback] = []
 
     class Config:
         from_attributes = True
+
+
+class TrendData(BaseModel):
+    date: date
+    score: float
+    category: str

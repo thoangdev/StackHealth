@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Date
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Date, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
@@ -17,8 +17,18 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
-class Project(Base):
-    __tablename__ = "projects"
+class AdminUser(Base):
+    __tablename__ = "admin_users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Product(Base):
+    __tablename__ = "products"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
@@ -26,39 +36,25 @@ class Project(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationship with scorecards
-    scorecards = relationship("Scorecard", back_populates="project", cascade="all, delete-orphan")
+    scorecards = relationship("Scorecard", back_populates="product", cascade="all, delete-orphan")
 
 
 class Scorecard(Base):
     __tablename__ = "scorecards"
 
     id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    category = Column(String, nullable=False)  # "automation", "performance", "security", "cicd"
     date = Column(Date, nullable=False)
-    automation_score = Column(Float, nullable=False)
-    performance_score = Column(Float, nullable=False)
-    security_score = Column(Float, nullable=False)
-    cicd_score = Column(Float, nullable=False)
+    score = Column(Float, nullable=False)  # Overall calculated score
+    breakdown = Column(JSON, nullable=False)  # Detailed field scores as JSON
+    feedback = Column(Text, nullable=True)  # Generated feedback
+    tool_suggestions = Column(Text, nullable=True)  # Tool recommendations
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    project = relationship("Project", back_populates="scorecards")
-    feedback = relationship("Feedback", back_populates="scorecard", cascade="all, delete-orphan")
+    product = relationship("Product", back_populates="scorecards")
 
-
-class Feedback(Base):
-    __tablename__ = "feedback"
-
-    id = Column(Integer, primary_key=True, index=True)
-    scorecard_id = Column(Integer, ForeignKey("scorecards.id"), nullable=False)
-    area = Column(String, nullable=False)  # "automation", "performance", "security", "cicd"
-    comment = Column(Text, nullable=True)
-    tool_recommendation = Column(String, nullable=True)
-    marked_for_improvement = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    # Relationship
-    scorecard = relationship("Scorecard", back_populates="feedback")
 
 
 # Create all tables

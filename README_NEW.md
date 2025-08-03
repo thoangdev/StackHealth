@@ -18,12 +18,14 @@
 ## 🌟 Features
 
 ### 📊 **DORA Metrics Integration**
+
 - **Deployment Frequency** assessment (On-demand to Monthly)
 - **Lead Time for Changes** tracking (Hours to Months)
 - **Mean Time to Recovery** measurement (Minutes to Weeks)
 - **Change Failure Rate** analysis (0% to 30%+)
 
 ### 🔒 **OWASP SAMM Security Assessment**
+
 - 14-field comprehensive security evaluation
 - Static/Dynamic Application Security Testing (SAST/DAST)
 - Software Composition Analysis (SCA) integration
@@ -31,6 +33,7 @@
 - Compliance tracking (SOC2, FedRAMP, etc.)
 
 ### 🔧 **Advanced CI/CD Pipeline Evaluation**
+
 - Core pipeline maturity assessment (20+ criteria)
 - Infrastructure as Code evaluation
 - Advanced deployment strategies (Blue-Green, Canary)
@@ -38,6 +41,7 @@
 - Configuration management assessment
 
 ### 🏢 **Enterprise Features**
+
 - **JWT Authentication** with secure token management
 - **Role-based Access Control** (Admin, User roles)
 - **Professional PDF Reports** with detailed breakdowns
@@ -46,6 +50,7 @@
 - **RESTful API** with OpenAPI/Swagger documentation
 
 ### 🚀 **DevOps Ready**
+
 - **Docker containerization** with multi-stage builds
 - **Kubernetes deployment** configurations
 - **Terraform infrastructure** as code
@@ -56,11 +61,13 @@
 ## 🏃 Quick Start
 
 ### Prerequisites
+
 - Python 3.9+
 - Git
 - Docker (optional)
 
 ### 1. Clone and Setup
+
 ```bash
 git clone https://github.com/thoangdev/StackHealth.git
 cd StackHealth
@@ -74,6 +81,7 @@ pip install -r backend/requirements.txt
 ```
 
 ### 2. Configuration
+
 ```bash
 # Copy environment configuration
 cp .env.example .env.development
@@ -83,17 +91,20 @@ nano .env.development
 ```
 
 ### 3. Initialize Database
+
 ```bash
 cd backend
 python -c "from database import engine, Base; Base.metadata.create_all(bind=engine)"
 ```
 
 ### 4. Generate Sample Data
+
 ```bash
 python ../scripts/create_enhanced_sample_data.py
 ```
 
 ### 5. Start the Application
+
 ```bash
 # Start backend
 python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
@@ -103,6 +114,7 @@ open ../frontend/index.html
 ```
 
 ### 6. Login and Explore
+
 - **URL**: http://localhost:8000 (API) / Open `frontend/index.html` (UI)
 - **Demo Login**: `admin@company.com` / `admin123`
 - **Swagger Docs**: http://localhost:8000/docs
@@ -141,6 +153,7 @@ StackHealth/
 ## 🛠️ Development
 
 ### Local Development Setup
+
 ```bash
 # Install development dependencies
 pip install -r backend/requirements-dev.txt
@@ -161,6 +174,7 @@ mypy .
 ```
 
 ### Testing
+
 ```bash
 # Run all tests
 pytest
@@ -177,6 +191,7 @@ pytest -m "security"      # Security tests only
 ## 🐳 Docker Deployment
 
 ### Quick Docker Run
+
 ```bash
 # Build and run with Docker Compose
 docker-compose up --build
@@ -187,6 +202,7 @@ docker run -p 8000:8000 stackhealth
 ```
 
 ### Production Deployment
+
 ```bash
 # Deploy to Kubernetes
 kubectl apply -f deployment/kubernetes.yaml
@@ -198,7 +214,9 @@ kubectl apply -f deployment/kubernetes.yaml
 ## 📊 Assessment Categories
 
 ### 🔒 Security Scorecard (25 points)
+
 Based on OWASP Software Assurance Maturity Model (SAMM):
+
 - Static/Dynamic Application Security Testing
 - Software Composition Analysis
 - Secrets scanning and management
@@ -206,6 +224,7 @@ Based on OWASP Software Assurance Maturity Model (SAMM):
 - Security training and compliance
 
 ### 🤖 Automation Scorecard (10 points)
+
 - Continuous Integration pipelines
 - Automated testing frameworks
 - Deployment automation
@@ -213,6 +232,7 @@ Based on OWASP Software Assurance Maturity Model (SAMM):
 - Monitoring and alerting
 
 ### ⚡ Performance Scorecard (9 points)
+
 - Load testing implementation
 - Performance monitoring tools
 - Caching strategies
@@ -220,19 +240,23 @@ Based on OWASP Software Assurance Maturity Model (SAMM):
 - CDN usage and optimization
 
 ### 🔄 CI/CD Scorecard (42 points)
+
 **DORA Metrics (16 points)**:
+
 - Deployment Frequency (4 pts)
 - Lead Time for Changes (4 pts)
 - Mean Time to Recovery (4 pts)
 - Change Failure Rate (4 pts)
 
 **Pipeline Maturity (26 points)**:
+
 - Core pipeline components (16 pts)
 - Advanced capabilities (10 pts)
 
 ## 🎯 Scoring System
 
 ### Score Interpretation
+
 - **90-100%**: 🟢 Excellent - Industry leading practices
 - **70-89%**: 🔵 Good - Strong foundation with room for improvement
 - **50-69%**: 🟡 Average - Basic practices in place
@@ -240,7 +264,9 @@ Based on OWASP Software Assurance Maturity Model (SAMM):
 - **0-29%**: 🔴 Critical - Immediate attention required
 
 ### Weighted Scoring
+
 Each category uses industry-standard weights:
+
 - **Security**: Emphasizes critical security practices (SAST/DAST: 3pts each)
 - **CI/CD**: DORA metrics weighted heavily (4pts each)
 - **Performance**: Monitoring and testing prioritized
@@ -257,6 +283,7 @@ Each category uses industry-standard weights:
 ## 🔗 API Reference
 
 ### Authentication
+
 ```bash
 # Register new user
 POST /auth/register
@@ -268,12 +295,13 @@ POST /auth/register
 # Login
 POST /auth/login
 {
-  "email": "user@company.com", 
+  "email": "user@company.com",
   "password": "secure_password"
 }
 ```
 
 ### Scorecards
+
 ```bash
 # Create scorecard
 POST /scorecards
@@ -294,6 +322,7 @@ Authorization: Bearer {token}
 ```
 
 ### Interactive API Documentation
+
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 
@@ -302,6 +331,7 @@ Authorization: Bearer {token}
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 ### Quick Contribution Steps
+
 1. **Fork** the repository
 2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
 3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
@@ -309,6 +339,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 5. **Open** a Pull Request
 
 ### Development Workflow
+
 - Follow [Conventional Commits](https://conventionalcommits.org/)
 - Ensure tests pass (`pytest`)
 - Maintain code coverage (>80%)
@@ -317,6 +348,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ## 🔒 Security
 
 Security is a top priority. Please see our [Security Policy](SECURITY.md) for:
+
 - Vulnerability reporting process
 - Security best practices
 - Supported versions
@@ -327,18 +359,21 @@ To report security vulnerabilities: **security@stackhealth.com**
 ## 📈 Roadmap
 
 ### v2.1.0 (Q3 2025)
+
 - [ ] Advanced analytics dashboard
 - [ ] Multi-tenant support
 - [ ] SSO integration (SAML, OAuth)
 - [ ] Advanced notification system
 
 ### v2.2.0 (Q4 2025)
+
 - [ ] Machine learning recommendations
 - [ ] Industry benchmarking
 - [ ] API rate limiting
 - [ ] Advanced reporting templates
 
 ### v3.0.0 (2026)
+
 - [ ] Microservices architecture
 - [ ] Real-time collaboration
 - [ ] Mobile application

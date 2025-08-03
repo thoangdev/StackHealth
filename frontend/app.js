@@ -1,421 +1,700 @@
-// API Configuration
-const API_BASE_URL = window.location.hostname === 'localhost' 
-    ? 'http://localhost:8000' 
-    : '/api';
-
-// Global state
-let projects = [];
-let scorecards = [];
-let trendChart = null;
-
-// Initialize the application
-document.addEventListener('DOMContentLoaded', function() {
-    initializeDateInput();
-    loadProjects();
-    loadScorecards();
-    setupEventListeners();
-});
-
-// Set default date to today
-function initializeDateInput() {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('scorecardDate').value = today;
-}
-
-// Setup event listeners
-function setupEventListeners() {
-    document.getElementById('scorecardForm').addEventListener('submit', handleScorecardSubmit);
-    document.getElementById('projectForm').addEventListener('submit', handleProjectSubmit);
-    document.getElementById('filterProject').addEventListener('change', handleProjectFilter);
-}
-
-// Tab switching functionality
-function showTab(tabName) {
-    // Hide all tab contents
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-    });
-    
-    // Remove active class from all tabs
-    document.querySelectorAll('.tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    // Show selected tab content
-    document.getElementById(tabName).classList.add('active');
-    
-    // Add active class to clicked tab
-    event.target.classList.add('active');
-    
-    // Load data when switching to certain tabs
-    if (tabName === 'view') {
-        loadScorecards();
-    } else if (tabName === 'projects') {
-        loadProjects();
-    }
-}
-
-// API Functions
-async function apiCall(endpoint, method = 'GET', data = null) {
-    try {
-        const config = {
-            method,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        };
+// Software Scorecard Dashboard v2.0 - Frontend Application
+class ScorecardDashboard {
+    constructor() {
+        this.baseURL = this.detectBaseURL();
+        this.token = localStorage.getItem('authToken');
+        this.currentUser = null;
+        this.chart = null;
         
-        if (data) {
-            config.body = JSON.stringify(data);
+        this.init();
+    }
+
+    detectBaseURL() {
+        // Auto-detect API base URL
+        const protocol = window.location.protocol;
+        const hostname = window.location.hostname;
+        const port = window.location.hostname === 'localhost' ? ':8000' : '';
+        return `${protocol}//${hostname}${port}`;
+    }
+
+    init() {
+        this.setupEventListeners();
+        this.setCurrentDate();
+        
+        if (this.token) {
+            this.showDashboard();
+            this.loadInitialData();
+        } else {
+            this.showAuthSection();
         }
+    }
+
+    setupEventListeners() {
+        // Authentication forms
+        document.getElementById('loginForm').addEventListener('submit', (e) => this.handleLogin(e));
+        document.getElementById('registerForm').addEventListener('submit', (e) => this.handleRegister(e));
         
-        const response = await axios({
-            method,
-            url: `${API_BASE_URL}${endpoint}`,
-            data,
-            headers: {
-                'Content-Type': 'application/json',
-            }
+        // Dashboard forms
+        document.getElementById('productForm').addEventListener('submit', (e) => this.handleCreateProduct(e));
+        document.getElementById('scorecardForm').addEventListener('submit', (e) => this.handleSubmitScorecard(e));
+    }
+
+    setCurrentDate() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('scorecardDate').value = today;
+    }
+
+    // Authentication Methods
+    async handleLogin(e) {
+        e.preventDefault();
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+
+        try {
+            const response = await axios.post(`${this.baseURL}/auth/login`, {
+                email,
+                password
+            });
+
+            this.token = response.data.access_token;
+            localStorage.setItem('authToken', this.token);
+            this.setupAxiosDefaults();
+            
+            this.showAlert('Login successful!', 'success');
+            this.showDashboard();
+            this.loadInitialData();
+        } catch (error) {
+            this.showAlert('Login failed: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
+        }
+    }
+
+    async handleRegister(e) {
+        e.preventDefault();
+        const email = document.getElementById('registerEmail').value;
+        const password = document.getElementById('registerPassword').value;
+
+        try {
+            await axios.post(`${this.baseURL}/auth/register`, {
+                email,
+                password
+            });
+
+            this.showAlert('Registration successful! Please login.', 'success');
+            this.switchAuthTab('login');
+        } catch (error) {
+            this.showAlert('Registration failed: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
+        }
+    }
+
+    setupAxiosDefaults() {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`;
+    }
+
+    logout() {
+        this.token = null;
+        localStorage.removeItem('authToken');
+        delete axios.defaults.headers.common['Authorization'];
+        
+        this.showAuthSection();
+        this.showAlert('Logged out successfully!', 'success');
+    }
+
+    showAuthSection() {
+        document.getElementById('authSection').classList.remove('hidden');
+        document.getElementById('dashboard').classList.add('hidden');
+    }
+
+    showDashboard() {
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+        this.setupAxiosDefaults();
+    }
+
+    switchAuthTab(tab) {
+        document.querySelectorAll('#authSection .tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('#authSection .tab-content').forEach(t => t.classList.remove('active'));
+        
+        document.querySelector(`#authSection .tab:nth-child(${tab === 'login' ? 1 : 2})`).classList.add('active');
+        document.getElementById(`${tab}Tab`).classList.add('active');
+    }
+
+    // Product Management
+    async handleCreateProduct(e) {
+        e.preventDefault();
+        const name = document.getElementById('productName').value;
+        const description = document.getElementById('productDescription').value;
+
+        try {
+            await axios.post(`${this.baseURL}/products`, {
+                name,
+                description
+            });
+
+            this.showAlert('Product created successfully!', 'success');
+            document.getElementById('productForm').reset();
+            this.loadProducts();
+        } catch (error) {
+            this.showAlert('Failed to create product: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
+        }
+    }
+
+    async loadProducts() {
+        try {
+            const response = await axios.get(`${this.baseURL}/products`);
+            this.displayProducts(response.data);
+            this.updateProductSelectors(response.data);
+        } catch (error) {
+            console.error('Failed to load products:', error);
+        }
+    }
+
+    displayProducts(products) {
+        const container = document.getElementById('productsList');
+        
+        if (products.length === 0) {
+            container.innerHTML = '<p class="loading">No products found. Create your first product above!</p>';
+            return;
+        }
+
+        container.innerHTML = products.map(product => `
+            <div class="scorecard-item">
+                <div class="scorecard-header">
+                    <h4>${product.name}</h4>
+                    <small>Created: ${new Date(product.created_at).toLocaleDateString()}</small>
+                </div>
+                <p>${product.description || 'No description provided'}</p>
+            </div>
+        `).join('');
+    }
+
+    updateProductSelectors(products) {
+        const selectors = ['scorecardProduct', 'trendProduct'];
+        
+        selectors.forEach(selectorId => {
+            const selector = document.getElementById(selectorId);
+            selector.innerHTML = '<option value="">Choose a product...</option>';
+            
+            products.forEach(product => {
+                const option = document.createElement('option');
+                option.value = product.id;
+                option.textContent = product.name;
+                selector.appendChild(option);
+            });
         });
+    }
+
+    // Scorecard Management
+    updateScorecardFields() {
+        const category = document.getElementById('scorecardCategory').value;
+        const container = document.getElementById('scorecardFields');
         
-        return response.data;
-    } catch (error) {
-        console.error('API Error:', error);
-        throw error;
+        if (!category) {
+            container.innerHTML = '';
+            return;
+        }
+
+        if (category === 'cicd') {
+            this.generateCICDForm(container);
+        } else {
+            const fields = this.getScorecardFields(category);
+            
+            container.innerHTML = `
+                <div class="form-group">
+                    <label><strong>${category.charAt(0).toUpperCase() + category.slice(1)} Assessment Criteria</strong></label>
+                    <div class="checkbox-group">
+                        ${Object.entries(fields).map(([key, label]) => `
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="${key}" name="${key}" value="true">
+                                <label for="${key}">${label}</label>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
     }
-}
 
-// Load projects from API
-async function loadProjects() {
-    try {
-        projects = await apiCall('/projects');
-        updateProjectSelects();
-        updateProjectsList();
-    } catch (error) {
-        showAlert('projectAlert', 'Error loading projects', 'error');
+    generateCICDForm(container) {
+        container.innerHTML = `
+            <div class="form-group">
+                <label><strong>CI/CD Assessment - DORA Metrics & Process Maturity</strong></label>
+                
+                <!-- DORA Metrics Section -->
+                <div class="dora-metrics-section">
+                    <h4>📊 DORA Key Metrics</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="deployment_frequency">Deployment Frequency</label>
+                            <select id="deployment_frequency" name="deployment_frequency" required>
+                                <option value="">Select frequency...</option>
+                                <option value="4">On-demand (multiple deploys per day)</option>
+                                <option value="3">Between once per day and once per week</option>
+                                <option value="2">Between once per week and once per month</option>
+                                <option value="1">Once per month or less frequent</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="lead_time">Lead Time for Changes</label>
+                            <select id="lead_time" name="lead_time" required>
+                                <option value="">Select lead time...</option>
+                                <option value="4">Less than one day</option>
+                                <option value="3">Between one day and one week</option>
+                                <option value="2">Between one week and one month</option>
+                                <option value="1">Longer than one month</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="mttr">Mean Time to Recovery</label>
+                            <select id="mttr" name="mttr" required>
+                                <option value="">Select recovery time...</option>
+                                <option value="4">Less than one hour</option>
+                                <option value="3">Less than one day</option>
+                                <option value="2">Less than one week</option>
+                                <option value="1">Longer than a week</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="change_failure_rate">Change Failure Rate</label>
+                            <select id="change_failure_rate" name="change_failure_rate" required>
+                                <option value="">Select failure rate...</option>
+                                <option value="4">0–15%</option>
+                                <option value="2">15–30%</option>
+                                <option value="1">More than 30%</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Core Pipeline Components -->
+                <div class="pipeline-section">
+                    <h4>🔧 Core Pipeline Components</h4>
+                    <div class="checkbox-grid">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="automated_builds" name="automated_builds" value="true">
+                            <label for="automated_builds">Automated Build Process</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="automated_tests" name="automated_tests" value="true">
+                            <label for="automated_tests">Automated Testing in Pipeline</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="code_quality_gates" name="code_quality_gates" value="true">
+                            <label for="code_quality_gates">Code Quality Gates & Checks</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="deployment_pipeline" name="deployment_pipeline" value="true">
+                            <label for="deployment_pipeline">Standardized Deployment Pipeline</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="rollback_strategy" name="rollback_strategy" value="true">
+                            <label for="rollback_strategy">Automated Rollback Strategy</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="environment_parity" name="environment_parity" value="true">
+                            <label for="environment_parity">Environment Parity (Dev/Stage/Prod)</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Advanced Capabilities -->
+                <div class="advanced-section">
+                    <h4>🚀 Advanced Capabilities</h4>
+                    <div class="checkbox-grid">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="infrastructure_as_code" name="infrastructure_as_code" value="true">
+                            <label for="infrastructure_as_code">Infrastructure as Code</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="config_management" name="config_management" value="true">
+                            <label for="config_management">Configuration Management</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="monitoring_alerts" name="monitoring_alerts" value="true">
+                            <label for="monitoring_alerts">Monitoring & Alerting Systems</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="security_integration" name="security_integration" value="true">
+                            <label for="security_integration">Security Testing Integration</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="performance_testing_integration" name="performance_testing_integration" value="true">
+                            <label for="performance_testing_integration">Performance Testing Integration</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Process Maturity -->
+                <div class="maturity-section">
+                    <h4>⭐ Process Maturity</h4>
+                    <div class="checkbox-grid">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="feature_flags" name="feature_flags" value="true">
+                            <label for="feature_flags">Feature Flags/Toggles</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="blue_green_deployment" name="blue_green_deployment" value="true">
+                            <label for="blue_green_deployment">Blue-Green Deployments</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="canary_deployment" name="canary_deployment" value="true">
+                            <label for="canary_deployment">Canary Deployments</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="database_migrations" name="database_migrations" value="true">
+                            <label for="database_migrations">Automated Database Migrations</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="secrets_management" name="secrets_management" value="true">
+                            <label for="secrets_management">Secrets Management</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
     }
-}
 
-// Update project dropdown options
-function updateProjectSelects() {
-    const projectSelect = document.getElementById('projectSelect');
-    const filterSelect = document.getElementById('filterProject');
-    
-    // Clear existing options (except first)
-    projectSelect.innerHTML = '<option value="">Select a project...</option>';
-    filterSelect.innerHTML = '<option value="">All projects</option>';
-    
-    // Add project options
-    projects.forEach(project => {
-        const option1 = new Option(project.name, project.id);
-        const option2 = new Option(project.name, project.id);
-        projectSelect.appendChild(option1);
-        filterSelect.appendChild(option2);
-    });
-}
+    getScorecardFields(category) {
+        const fields = {
+            security: {
+                sast: "Static Application Security Testing (SAST)",
+                dast: "Dynamic Application Security Testing (DAST)",
+                sast_dast_in_ci: "Security Testing Integrated in CI/CD",
+                triaging_findings: "Security Findings Triaged & Remediated",
+                secrets_scanning: "Secrets Scanning in CI",
+                sca_tool_used: "Software Composition Analysis (SCA) Tool",
+                cve_alerts: "Critical CVE Auto-Alerts",
+                pr_enforcement: "Dependency Scanning in Pull Requests",
+                training: "Developer Security Training",
+                threat_modeling: "Threat Modeling Process",
+                bug_bounty_policy: "Bug Bounty or Disclosure Policy",
+                compliance: "Compliance Standards (SOC2, FedRAMP, etc.)",
+                secure_design_reviews: "Security in Design Reviews",
+                predeployment_threat_modeling: "Pre-deployment Threat Modeling"
+            },
+            automation: {
+                ci_pipeline: "Continuous Integration Pipeline",
+                automated_testing: "Automated Testing Suite",
+                deployment_automation: "Automated Deployment Process",
+                monitoring_alerts: "Automated Monitoring & Alerts",
+                infrastructure_as_code: "Infrastructure as Code"
+            },
+            performance: {
+                load_testing: "Load Testing Implementation",
+                performance_monitoring: "Performance Monitoring Tools",
+                caching_strategy: "Caching Strategy Implementation",
+                database_optimization: "Database Performance Optimization",
+                cdn_usage: "Content Delivery Network Usage"
+            },
+            cicd: {
+                // DORA Metrics (Scaled Questions)
+                deployment_frequency: "Deployment Frequency",
+                lead_time: "Lead Time for Changes", 
+                mttr: "Mean Time to Recovery",
+                change_failure_rate: "Change Failure Rate",
+                
+                // Core Pipeline Components (Yes/No)
+                automated_builds: "Automated Build Process",
+                automated_tests: "Automated Testing in Pipeline",
+                code_quality_gates: "Code Quality Gates & Checks",
+                deployment_pipeline: "Standardized Deployment Pipeline",
+                rollback_strategy: "Automated Rollback Strategy",
+                environment_parity: "Environment Parity (Dev/Stage/Prod)",
+                
+                // Advanced Capabilities (Yes/No)
+                infrastructure_as_code: "Infrastructure as Code",
+                config_management: "Configuration Management",
+                monitoring_alerts: "Monitoring & Alerting Systems",
+                security_integration: "Security Testing Integration",
+                performance_testing_integration: "Performance Testing Integration",
+                
+                // Process Maturity (Yes/No)
+                feature_flags: "Feature Flags/Toggles",
+                blue_green_deployment: "Blue-Green Deployments",
+                canary_deployment: "Canary Deployments",
+                database_migrations: "Automated Database Migrations",
+                secrets_management: "Secrets Management"
+            }
+        };
 
-// Handle project form submission
-async function handleProjectSubmit(event) {
-    event.preventDefault();
-    
-    const projectData = {
-        name: document.getElementById('projectName').value.trim(),
-        description: document.getElementById('projectDescription').value.trim() || null
-    };
-    
-    try {
-        await apiCall('/projects', 'POST', projectData);
-        showAlert('projectAlert', 'Project created successfully!', 'success');
-        document.getElementById('projectForm').reset();
-        loadProjects();
-    } catch (error) {
-        const message = error.response?.data?.detail || 'Error creating project';
-        showAlert('projectAlert', message, 'error');
+        return fields[category] || {};
     }
-}
 
-// Handle scorecard form submission
-async function handleScorecardSubmit(event) {
-    event.preventDefault();
-    
-    const feedback = [];
-    const areas = ['automation', 'performance', 'security', 'cicd'];
-    
-    // Collect feedback for each area
-    areas.forEach(area => {
-        const comment = document.getElementById(`${area}Feedback`).value.trim();
-        const tools = document.getElementById(`${area}Tools`).value.trim();
-        const improvement = document.getElementById(`${area}Improvement`).checked;
+    async handleSubmitScorecard(e) {
+        e.preventDefault();
         
-        if (comment || tools || improvement) {
-            feedback.push({
-                area,
-                comment: comment || null,
-                tool_recommendation: tools || null,
-                marked_for_improvement: improvement
+        const productId = parseInt(document.getElementById('scorecardProduct').value);
+        const category = document.getElementById('scorecardCategory').value;
+        const date = document.getElementById('scorecardDate').value;
+        
+        // Collect values based on category
+        const breakdown = {};
+        
+        if (category === 'cicd') {
+            // Collect DORA metrics (select values)
+            const doraMetrics = ['deployment_frequency', 'lead_time', 'mttr', 'change_failure_rate'];
+            doraMetrics.forEach(metric => {
+                const select = document.getElementById(metric);
+                breakdown[metric] = select ? parseInt(select.value) || 0 : 0;
+            });
+            
+            // Collect yes/no capabilities (checkboxes)
+            const capabilities = [
+                'automated_builds', 'automated_tests', 'code_quality_gates', 'deployment_pipeline',
+                'rollback_strategy', 'environment_parity', 'infrastructure_as_code', 'config_management',
+                'monitoring_alerts', 'security_integration', 'performance_testing_integration',
+                'feature_flags', 'blue_green_deployment', 'canary_deployment', 'database_migrations',
+                'secrets_management'
+            ];
+            capabilities.forEach(capability => {
+                const checkbox = document.getElementById(capability);
+                breakdown[capability] = checkbox ? checkbox.checked : false;
+            });
+        } else {
+            // Standard checkbox collection for other categories
+            const fields = this.getScorecardFields(category);
+            Object.keys(fields).forEach(field => {
+                const checkbox = document.getElementById(field);
+                breakdown[field] = checkbox ? checkbox.checked : false;
             });
         }
-    });
-    
-    const scorecardData = {
-        project_id: parseInt(document.getElementById('projectSelect').value),
-        date: document.getElementById('scorecardDate').value,
-        automation_score: parseFloat(document.getElementById('automationScore').value),
-        performance_score: parseFloat(document.getElementById('performanceScore').value),
-        security_score: parseFloat(document.getElementById('securityScore').value),
-        cicd_score: parseFloat(document.getElementById('cicdScore').value),
-        feedback
-    };
-    
-    try {
-        await apiCall('/scorecards', 'POST', scorecardData);
-        showAlert('submitAlert', 'Scorecard submitted successfully!', 'success');
-        document.getElementById('scorecardForm').reset();
-        initializeDateInput();
-        loadScorecards();
-    } catch (error) {
-        const message = error.response?.data?.detail || 'Error submitting scorecard';
-        showAlert('submitAlert', message, 'error');
-    }
-}
 
-// Load scorecards from API
-async function loadScorecards() {
-    try {
-        document.getElementById('scorecardsLoading').style.display = 'block';
-        
-        const projectId = document.getElementById('filterProject')?.value;
-        const endpoint = projectId ? `/scorecards?project_id=${projectId}` : '/scorecards';
-        
-        scorecards = await apiCall(endpoint);
-        updateScorecardsTable();
-        updateTrendChart();
-        
-        document.getElementById('scorecardsLoading').style.display = 'none';
-    } catch (error) {
-        document.getElementById('scorecardsLoading').innerHTML = 'Error loading scorecards';
-    }
-}
+        try {
+            await axios.post(`${this.baseURL}/scorecards`, {
+                product_id: productId,
+                category,
+                date,
+                breakdown
+            });
 
-// Handle project filter change
-function handleProjectFilter() {
-    loadScorecards();
-}
-
-// Update scorecards table
-function updateScorecardsTable() {
-    const container = document.getElementById('scorecardsContainer');
-    
-    if (scorecards.length === 0) {
-        container.innerHTML = '<p>No scorecards found.</p>';
-        return;
+            this.showAlert('Scorecard submitted successfully!', 'success');
+            document.getElementById('scorecardForm').reset();
+            document.getElementById('scorecardFields').innerHTML = '';
+            this.loadScorecards();
+        } catch (error) {
+            this.showAlert('Failed to submit scorecard: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
+        }
     }
-    
-    const table = document.createElement('table');
-    table.className = 'scorecard-table';
-    
-    // Table header
-    table.innerHTML = `
-        <thead>
-            <tr>
-                <th>Project</th>
-                <th>Date</th>
-                <th>Automation</th>
-                <th>Performance</th>
-                <th>Security</th>
-                <th>CI/CD</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            ${scorecards.map(scorecard => `
-                <tr>
-                    <td>${scorecard.project_name}</td>
-                    <td>${formatDate(scorecard.date)}</td>
-                    <td>${getScoreBadge(scorecard.automation_score)}</td>
-                    <td>${getScoreBadge(scorecard.performance_score)}</td>
-                    <td>${getScoreBadge(scorecard.security_score)}</td>
-                    <td>${getScoreBadge(scorecard.cicd_score)}</td>
-                    <td>
-                        <button class="btn btn-secondary" onclick="downloadPDF(${scorecard.id})">
-                            📄 Export PDF
+
+    async loadScorecards() {
+        try {
+            const response = await axios.get(`${this.baseURL}/scorecards`);
+            this.displayScorecards(response.data);
+        } catch (error) {
+            console.error('Failed to load scorecards:', error);
+        }
+    }
+
+    displayScorecards(scorecards) {
+        const container = document.getElementById('scorecardsList');
+        
+        if (scorecards.length === 0) {
+            container.innerHTML = '<p class="loading">No scorecards found. Submit your first scorecard!</p>';
+            return;
+        }
+
+        container.innerHTML = scorecards.map(scorecard => `
+            <div class="scorecard-item">
+                <div class="scorecard-header">
+                    <div>
+                        <h4>${scorecard.product_name} - ${scorecard.category.charAt(0).toUpperCase() + scorecard.category.slice(1)}</h4>
+                        <small>Date: ${new Date(scorecard.date).toLocaleDateString()}</small>
+                    </div>
+                    <div>
+                        <span class="score-badge ${this.getScoreClass(scorecard.score)}">
+                            ${scorecard.score.toFixed(1)}%
+                        </span>
+                        <button class="btn btn-secondary" onclick="dashboard.downloadPDF(${scorecard.id})">
+                            <i class="fas fa-download"></i> PDF
                         </button>
-                    </td>
-                </tr>
-            `).join('')}
-        </tbody>
-    `;
-    
-    container.innerHTML = '';
-    container.appendChild(table);
-}
-
-// Update projects list
-function updateProjectsList() {
-    const container = document.getElementById('projectsList');
-    document.getElementById('projectsLoading').style.display = 'none';
-    
-    if (projects.length === 0) {
-        container.innerHTML = '<p>No projects found.</p>';
-        return;
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <h5>Feedback:</h5>
+                    <p>${scorecard.feedback || 'No feedback available'}</p>
+                </div>
+                ${scorecard.tool_suggestions ? `
+                    <div style="margin-top: 10px;">
+                        <h5>Recommended Tools:</h5>
+                        <p>${scorecard.tool_suggestions}</p>
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
     }
-    
-    const projectsHtml = projects.map(project => `
-        <div style="border: 1px solid #e1e5e9; border-radius: 8px; padding: 20px; margin-bottom: 15px; background: white;">
-            <h4 style="margin-bottom: 10px; color: #333;">${project.name}</h4>
-            ${project.description ? `<p style="color: #666; margin-bottom: 10px;">${project.description}</p>` : ''}
-            <small style="color: #999;">Created: ${formatDate(project.created_at)}</small>
-        </div>
-    `).join('');
-    
-    container.innerHTML = projectsHtml;
-}
 
-// Update trend chart
-function updateTrendChart() {
-    const ctx = document.getElementById('trendChart').getContext('2d');
-    
-    // Destroy existing chart
-    if (trendChart) {
-        trendChart.destroy();
+    getScoreClass(score) {
+        if (score >= 80) return 'score-excellent';
+        if (score >= 60) return 'score-good';
+        if (score >= 40) return 'score-fair';
+        return 'score-poor';
     }
-    
-    // Prepare data for chart
-    const chartData = prepareTrendData();
-    
-    trendChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: chartData.labels,
-            datasets: [
-                {
-                    label: 'Automation',
-                    data: chartData.automation,
-                    borderColor: '#ff6384',
-                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                    tension: 0.1
-                },
-                {
-                    label: 'Performance',
-                    data: chartData.performance,
-                    borderColor: '#36a2eb',
-                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                    tension: 0.1
-                },
-                {
-                    label: 'Security',
-                    data: chartData.security,
-                    borderColor: '#ffce56',
-                    backgroundColor: 'rgba(255, 206, 86, 0.1)',
-                    tension: 0.1
-                },
-                {
-                    label: 'CI/CD',
-                    data: chartData.cicd,
-                    borderColor: '#4bc0c0',
-                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                    tension: 0.1
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100,
-                    title: {
-                        display: true,
-                        text: 'Score (%)'
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Date'
-                    }
-                }
+
+    async downloadPDF(scorecardId) {
+        try {
+            const response = await axios.get(`${this.baseURL}/scorecards/${scorecardId}/pdf`, {
+                responseType: 'blob'
+            });
+
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `scorecard_${scorecardId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            this.showAlert('Failed to download PDF: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
+        }
+    }
+
+    // Trends and Analytics
+    async loadTrends() {
+        const productId = document.getElementById('trendProduct').value;
+        const category = document.getElementById('trendCategory').value;
+        
+        if (!productId || !category) {
+            return;
+        }
+
+        try {
+            const response = await axios.get(`${this.baseURL}/trends/${productId}/${category}?days=90`);
+            this.displayTrendChart(response.data, category);
+        } catch (error) {
+            console.error('Failed to load trends:', error);
+        }
+    }
+
+    displayTrendChart(data, category) {
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        
+        if (this.chart) {
+            this.chart.destroy();
+        }
+
+        const labels = data.map(item => new Date(item.date).toLocaleDateString());
+        const scores = data.map(item => item.score);
+
+        this.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: `${category.charAt(0).toUpperCase() + category.slice(1)} Score`,
+                    data: scores,
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4
+                }]
             },
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Score Trends Over Time'
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: `${category.charAt(0).toUpperCase() + category.slice(1)} Score Trends`
+                    },
+                    legend: {
+                        display: false
+                    }
                 },
-                legend: {
-                    position: 'top'
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Score (%)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    }
                 }
             }
-        }
-    });
-}
-
-// Prepare data for trend chart
-function prepareTrendData() {
-    // Sort scorecards by date
-    const sortedScorecards = [...scorecards].sort((a, b) => new Date(a.date) - new Date(b.date));
-    
-    return {
-        labels: sortedScorecards.map(s => formatDate(s.date)),
-        automation: sortedScorecards.map(s => s.automation_score),
-        performance: sortedScorecards.map(s => s.performance_score),
-        security: sortedScorecards.map(s => s.security_score),
-        cicd: sortedScorecards.map(s => s.cicd_score)
-    };
-}
-
-// Download PDF for a scorecard
-async function downloadPDF(scorecardId) {
-    try {
-        const response = await axios({
-            method: 'GET',
-            url: `${API_BASE_URL}/scorecards/${scorecardId}/pdf`,
-            responseType: 'blob'
         });
+    }
+
+    // UI Helper Methods
+    switchTab(tabName) {
+        document.querySelectorAll('#dashboard .tab').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('#dashboard .tab-content').forEach(content => content.classList.remove('active'));
         
-        // Create download link
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
+        event.target.classList.add('active');
+        document.getElementById(`${tabName}Tab`).classList.add('active');
         
-        // Get filename from response headers or generate one
-        const contentDisposition = response.headers['content-disposition'];
-        let filename = `scorecard_${scorecardId}.pdf`;
-        if (contentDisposition) {
-            const matches = /filename="([^"]*)"/.exec(contentDisposition);
-            if (matches) filename = matches[1];
+        // Load data when switching to certain tabs
+        if (tabName === 'reports') {
+            this.loadScorecards();
         }
+    }
+
+    showAlert(message, type = 'success') {
+        // Remove existing alerts
+        const existingAlerts = document.querySelectorAll('.alert');
+        existingAlerts.forEach(alert => alert.remove());
         
-        link.setAttribute('download', filename);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.URL.revokeObjectURL(url);
-    } catch (error) {
-        alert('Error downloading PDF');
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type}`;
+        alert.textContent = message;
+        
+        // Insert after header
+        const header = document.querySelector('.header');
+        header.insertAdjacentElement('afterend', alert);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 5000);
+    }
+
+    async loadInitialData() {
+        try {
+            await this.loadProducts();
+            await this.loadScorecards();
+        } catch (error) {
+            console.error('Failed to load initial data:', error);
+        }
     }
 }
 
-// Utility functions
-function formatDate(dateString) {
-    return new Date(dateString).toLocaleDateString();
+// Global functions for HTML onclick handlers
+function switchTab(tabName) {
+    dashboard.switchTab(tabName);
 }
 
-function getScoreBadge(score) {
-    let className = 'score-low';
-    if (score >= 80) className = 'score-high';
-    else if (score >= 60) className = 'score-medium';
-    
-    return `<span class="score-badge ${className}">${score}%</span>`;
+function switchAuthTab(tabName) {
+    dashboard.switchAuthTab(tabName);
 }
 
-function showAlert(containerId, message, type) {
-    const container = document.getElementById(containerId);
-    const className = type === 'success' ? 'alert-success' : 'alert-error';
-    
-    container.innerHTML = `<div class="alert ${className}">${message}</div>`;
-    
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-        container.innerHTML = '';
-    }, 5000);
+function updateScorecardFields() {
+    dashboard.updateScorecardFields();
 }
+
+function loadTrends() {
+    dashboard.loadTrends();
+}
+
+function logout() {
+    dashboard.logout();
+}
+
+// Initialize the dashboard when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.dashboard = new ScorecardDashboard();
+});

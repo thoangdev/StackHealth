@@ -1,16 +1,19 @@
-from fastapi import FastAPI, Depends, HTTPException, Response
+from fastapi import FastAPI, Depends, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import timedelta
 import crud
 import schemas
 import database
+import auth
 from pdf_generator import generate_pdf_report
 
 app = FastAPI(
     title="Software Scorecard Dashboard API",
-    description="API for tracking and visualizing software scorecards",
-    version="1.0.0"
+    description="API for tracking and visualizing software scorecards with authentication",
+    version="2.0.0"
 )
 
 # Enable CORS for frontend integration
@@ -22,91 +25,131 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+security = HTTPBearer()
+
 
 @app.get("/")
 def read_root():
     """Health check endpoint"""
-    return {"message": "Software Scorecard Dashboard API is running!"}
+    return {"message": "Software Scorecard Dashboard API v2.0 is running!"}
 
 
-# Project endpoints
-@app.post("/projects", response_model=schemas.Project)
-def create_project(
-    project: schemas.ProjectCreate, 
+# Authentication endpoints
+@app.post("/auth/login", response_model=schemas.Token)
+def login_for_access_token(
+    login_request: schemas.LoginRequest,
     db: Session = Depends(database.get_db)
 ):
-    """Create a new project"""
-    # Check if project with same name already exists
-    db_project = crud.get_project_by_name(db, name=project.name)
-    if db_project:
-        raise HTTPException(status_code=400, detail="Project with this name already exists")
+    """Authenticate user and return access token"""
+    user = auth.authenticate_user(db, login_request.email, login_request.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": user.email}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.post("/auth/register", response_model=schemas.AdminUser)
+def register_admin_user(
+    user_data: schemas.AdminUserCreate,
+    db: Session = Depends(database.get_db)
+):
+    """Register a new admin user (for demo purposes - restrict in production)"""
+    # Check if user already exists
+    existing_user = auth.get_user_by_email(db, user_data.email)
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
     
-    return crud.create_project(db=db, project=project)
+    return auth.create_admin_user(db, user_data.email, user_data.password)
 
 
-@app.get("/projects", response_model=List[schemas.Project])
-def list_projects(
+# Product endpoints (protected)
+@app.post("/products", response_model=schemas.Product)
+def create_product(
+    product: schemas.ProductCreate, 
+    db: Session = Depends(database.get_db),
+    current_user: database.AdminUser = Depends(auth.get_current_user)
+):
+    """Create a new product"""
+    # Check if product with same name already exists
+    db_product = crud.get_product_by_name(db, name=product.name)
+    if db_product:
+        raise HTTPException(status_code=400, detail="Product with this name already exists")
+    
+    return crud.create_product(db=db, product=product)
+
+
+@app.get("/products", response_model=List[schemas.Product])
+def list_products(
     skip: int = 0, 
     limit: int = 100, 
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_user: database.AdminUser = Depends(auth.get_current_user)
 ):
-    """Get all projects"""
-    return crud.get_projects(db, skip=skip, limit=limit)
+    """Get all products"""
+    return crud.get_products(db, skip=skip, limit=limit) 
 
-
-# Scorecard endpoints
+# Scorecard endpoints (protected)
 @app.post("/scorecards", response_model=schemas.Scorecard)
 def create_scorecard(
     scorecard: schemas.ScorecardCreate,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_user: database.AdminUser = Depends(auth.get_current_user)
 ):
     """Submit a new scorecard with feedback"""
-    # Verify project exists
-    project = crud.get_project_by_id(db, project_id=scorecard.project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    # Verify product exists
+    product = crud.get_product_by_id(db, product_id=scorecard.product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
     
-    # Validate scores are between 0 and 100
-    scores = [
-        scorecard.automation_score,
-        scorecard.performance_score,
-        scorecard.security_score,
-        scorecard.cicd_score
-    ]
+    # Validate category
+    valid_categories = ["automation", "performance", "security", "cicd"]
+    if scorecard.category not in valid_categories:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}"
+        )
     
-    for score in scores:
-        if not (0 <= score <= 100):
-            raise HTTPException(status_code=400, detail="Scores must be between 0 and 100")
-    
-    return crud.create_scorecard_with_feedback(db=db, scorecard=scorecard)
+    return crud.create_scorecard(db=db, scorecard=scorecard)
 
 
-@app.get("/scorecards", response_model=List[schemas.ScorecardWithProject])
+@app.get("/scorecards", response_model=List[schemas.ScorecardWithProduct])
 def list_scorecards(
-    project_id: Optional[int] = None,
+    product_id: Optional[int] = None,
+    category: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_user: database.AdminUser = Depends(auth.get_current_user)
 ):
-    """Get scorecards, optionally filtered by project"""
-    scorecards = crud.get_scorecards_by_project(
-        db, project_id=project_id, skip=skip, limit=limit
+    """Get scorecards, optionally filtered by product and category"""
+    scorecards = crud.get_scorecards_by_product(
+        db, product_id=product_id, category=category, skip=skip, limit=limit
     )
     
-    # Convert to response format with project name
+    # Convert to response format with product name
     result = []
     for scorecard in scorecards:
-        scorecard_data = schemas.ScorecardWithProject(
+        scorecard_data = schemas.ScorecardWithProduct(
             id=scorecard.id,
-            project_id=scorecard.project_id,
-            project_name=scorecard.project.name,
+            product_id=scorecard.product_id,
+            product_name=scorecard.product.name,
+            category=scorecard.category,
             date=scorecard.date,
-            automation_score=scorecard.automation_score,
-            performance_score=scorecard.performance_score,
-            security_score=scorecard.security_score,
-            cicd_score=scorecard.cicd_score,
-            created_at=scorecard.created_at,
-            feedback=scorecard.feedback
+            score=scorecard.score,
+            breakdown=scorecard.breakdown,
+            feedback=scorecard.feedback,
+            tool_suggestions=scorecard.tool_suggestions,
+            created_at=scorecard.created_at
         )
         result.append(scorecard_data)
     
@@ -116,7 +159,8 @@ def list_scorecards(
 @app.get("/scorecards/{scorecard_id}/pdf")
 def get_scorecard_pdf(
     scorecard_id: int,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_user: database.AdminUser = Depends(auth.get_current_user)
 ):
     """Generate and return PDF report for a scorecard"""
     scorecard = crud.get_scorecard_by_id(db, scorecard_id=scorecard_id)
@@ -127,7 +171,7 @@ def get_scorecard_pdf(
     pdf_bytes = generate_pdf_report(scorecard)
     
     # Return PDF as response
-    filename = f"scorecard_{scorecard.project.name}_{scorecard.date}.pdf"
+    filename = f"scorecard_{scorecard.product.name}_{scorecard.category}_{scorecard.date}.pdf"
     headers = {
         "Content-Disposition": f"attachment; filename={filename}",
         "Content-Type": "application/pdf"
@@ -139,7 +183,8 @@ def get_scorecard_pdf(
 @app.get("/scorecards/{scorecard_id}", response_model=schemas.Scorecard)
 def get_scorecard(
     scorecard_id: int,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_user: database.AdminUser = Depends(auth.get_current_user)
 ):
     """Get a specific scorecard with all details"""
     scorecard = crud.get_scorecard_by_id(db, scorecard_id=scorecard_id)
@@ -147,6 +192,40 @@ def get_scorecard(
         raise HTTPException(status_code=404, detail="Scorecard not found")
     
     return scorecard
+
+
+@app.get("/trends/{product_id}/{category}", response_model=List[schemas.TrendData])
+def get_trend_data(
+    product_id: int,
+    category: str,
+    days: int = 30,
+    db: Session = Depends(database.get_db),
+    current_user: database.AdminUser = Depends(auth.get_current_user)
+):
+    """Get trend data for a product's specific category"""
+    # Verify product exists
+    product = crud.get_product_by_id(db, product_id=product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Validate category
+    valid_categories = ["automation", "performance", "security", "cicd"]
+    if category not in valid_categories:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}"
+        )
+    
+    trend_data = crud.get_trend_data(db, product_id, category, days)
+    
+    return [
+        schemas.TrendData(
+            date=scorecard.date,
+            score=scorecard.score,
+            category=scorecard.category
+        )
+        for scorecard in trend_data
+    ]
 
 
 if __name__ == "__main__":

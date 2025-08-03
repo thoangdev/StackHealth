@@ -1,0 +1,107 @@
+name: ✨ Feature Request
+description: Suggest a new feature or enhancement for the StackHealth Scorecard Platform
+title: "[FEATURE] "
+labels: ["enhancement", "needs-triage"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a new feature! Please provide details about your request.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? Is your feature request related to a problem?
+      placeholder: I'm frustrated when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like to see implemented
+      placeholder: I would like to see...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Describe any alternative solutions or features you've considered
+      placeholder: Alternatively, we could...
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: Which area of the platform does this feature relate to?
+      options:
+        - Authentication & Security
+        - Scorecard Assessment
+        - Reporting & Analytics
+        - API & Integration
+        - User Interface
+        - Performance
+        - Documentation
+        - DevOps & Deployment
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority Level
+      description: How important is this feature to you?
+      options:
+        - Low - Nice to have
+        - Medium - Would be helpful
+        - High - Important for workflow
+        - Critical - Blocking current work
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: requirements
+    attributes:
+      label: Requirements
+      description: Select any requirements that apply to this feature
+      options:
+        - label: This feature requires database changes
+        - label: This feature requires API changes
+        - label: This feature requires UI/UX changes
+        - label: This feature affects security
+        - label: This feature requires documentation updates
+        - label: This feature needs backward compatibility
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: Use Cases
+      description: Describe specific use cases where this feature would be beneficial
+      placeholder: |
+        1. As a security manager, I want to...
+        2. As a developer, I need to...
+        3. As an administrator, I would like to...
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: What conditions must be met for this feature to be considered complete?
+      placeholder: |
+        - [ ] Feature works as described
+        - [ ] Documentation is updated
+        - [ ] Tests are added
+        - [ ] Performance impact is minimal
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context, mockups, or examples about the feature request
+      placeholder: Any additional information, links to similar features, mockups, etc.

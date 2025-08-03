@@ -34,38 +34,50 @@ def get_product_by_name(db: Session, name: str) -> Optional[database.Product]:
 
 
 def calculate_score(breakdown: Dict[str, Any], category: str) -> float:
-    """Calculate overall score based on breakdown fields"""
+    """Calculate category score as percentage (0-100%) based on breakdown fields"""
+    
+    # Updated weights for independent category scoring
     weights = {
         "security": {
-            "sast": 2, "dast": 2, "sast_dast_in_ci": 3, "triaging_findings": 2, 
-            "secrets_scanning": 1, "sca_tool_used": 2, "cve_alerts": 2, 
-            "pr_enforcement": 2, "training": 1, "threat_modeling": 2, 
-            "bug_bounty_policy": 1, "compliance": 1, "secure_design_reviews": 2, 
-            "predeployment_threat_modeling": 2
+            # Static & Dynamic Testing (12 points = 40%)
+            "sast": 3, "dast": 3, "sast_dast_in_ci": 4, "triaging_findings": 2,
+            # Dependency & Secrets Management (8 points = 27%)
+            "secrets_scanning": 2, "sca_tool_used": 3, "cve_alerts": 3,
+            # Security Culture & Governance (10 points = 33%)
+            "threat_modeling": 3, "compliance": 2, "training": 2, 
+            "bug_bounty_policy": 1, "security_champions": 2
         },
         "automation": {
-            "ci_pipeline": 3, "automated_testing": 3, "deployment_automation": 2,
-            "monitoring_alerts": 1, "infrastructure_as_code": 1
+            # Test Automation Foundation (15 points = 37.5%)
+            "automated_testing": 2, "testing_framework": 3, "dedicated_environment": 2,
+            "source_controlled": 3, "quick_setup": 1, "external_updates": 2, "test_reporting": 2,
+            # Test Design & Maintenance (13 points = 32.5%)
+            "seeded_data": 2, "test_independence": -5, "data_reseeding": 3,
+            "test_subsets": 3, "rapid_updates": 2, "database_automation": 2,
+            "cross_browser_testing": 2, "parallel_execution": 2, "flakiness_management": 2,
+            # CI/CD Integration & Deployment Testing (12 points = 30%)
+            "post_deploy_sanity": 3, "sanity_independence": -2, "smoke_testing": 3,
+            "performance_integration": 2, "security_integration": 2, "notification_integration": 1,
+            "test_dashboard": 2, "automated_scheduling": 1
         },
         "performance": {
-            "load_testing": 2, "performance_monitoring": 3, "caching_strategy": 1,
-            "database_optimization": 2, "cdn_usage": 1
+            # Performance Strategy & Planning (10 points = 33%)
+            "performance_requirements": 3, "regular_testing": 2, "performance_budget": 2, "trend_analysis": 3,
+            # Testing Implementation & Tools (12 points = 40%)
+            "dedicated_tools": 2, "ci_integration": 4, "production_like_env": 3, "load_testing": 3,
+            # Monitoring & Observability (8 points = 27%)
+            "realtime_monitoring": 2, "core_metrics": 2, "resource_utilization": 1,
+            "dashboard_viz": 2, "automated_alerting": 1
         },
         "cicd": {
-            # DORA Metrics (Core Performance)
-            "deployment_frequency": 4, "lead_time": 4, "mttr": 4, "change_failure_rate": 4,
-            
-            # Core Pipeline Components
-            "automated_builds": 3, "automated_tests": 4, "code_quality_gates": 2,
-            "deployment_pipeline": 3, "rollback_strategy": 2, "environment_parity": 2,
-            
-            # Advanced Capabilities
-            "infrastructure_as_code": 2, "config_management": 2, "monitoring_alerts": 2,
-            "security_integration": 3, "performance_testing_integration": 2,
-            
-            # Process Maturity
-            "feature_flags": 1, "blue_green_deployment": 1, "canary_deployment": 1,
-            "database_migrations": 1, "secrets_management": 2
+            # DORA Metrics (20 points = 44%)
+            "deployment_frequency": 5, "lead_time": 5, "recovery_time": 5, "change_failure_rate": 5,
+            # Pipeline Foundation (15 points = 33%)
+            "automated_builds": 3, "automated_tests": 4, "code_quality_gates": 3,
+            "security_integration": 3, "artifact_management": 2,
+            # Deployment & Release Management (10 points = 23%)
+            "automated_deployment": 3, "environment_promotion": 2, "rollback_capability": 3,
+            "feature_flags": 2
         }
     }
     
@@ -73,26 +85,97 @@ def calculate_score(breakdown: Dict[str, Any], category: str) -> float:
     total_weighted_score = 0
     total_possible_score = 0
     
-    # Special handling for CI/CD DORA metrics (scaled 1-4) vs boolean fields
-    dora_metrics = ['deployment_frequency', 'lead_time', 'mttr', 'change_failure_rate']
+    # Calculate maximum possible score for the category
+    max_scores = {
+        "security": 30,
+        "automation": 40,  # Base score, bonuses can exceed this
+        "performance": 30,
+        "cicd": 45  # Base score, bonuses can exceed this
+    }
+    
+    category_max = max_scores.get(category, 100)
+    
+    # Special handling for different field types
+    dora_metrics = ['deployment_frequency', 'lead_time', 'recovery_time', 'change_failure_rate']
+    coverage_fields = ['api_coverage', 'functional_coverage', 'integration_coverage', 'workflow_coverage']
+    test_type_fields = ['test_types', 'load_testing']
     
     for field, value in breakdown.items():
-        weight = category_weights.get(field, 1)
+        weight = category_weights.get(field, 0)
+        
+        if weight == 0:
+            continue  # Skip fields not in weights
         
         if category == "cicd" and field in dora_metrics:
-            # DORA metrics are scaled 1-4, normalize to 0-1
-            normalized_value = max(0, int(value) - 1) / 3  # Convert 1-4 to 0-1
-            total_weighted_score += normalized_value * weight
+            # DORA metrics: map string values to scores
+            dora_scores = {
+                "on-demand": 5, "daily": 4, "weekly": 2, "monthly": 1,
+                "<1hour": 5, "<1day": 4, "<1week": 2, ">1week": 1,
+                "0-5%": 5, "6-15%": 4, "16-30%": 2, ">30%": 1
+            }
+            score_value = dora_scores.get(value, 0)
+            total_weighted_score += score_value
+            total_possible_score += 5  # Max DORA score
+            
+        elif field in coverage_fields:
+            # Coverage fields: map percentage ranges to scores
+            if field == "api_coverage":
+                coverage_scores = {"0%": 0, "1-20%": 1, "20-40%": 2, 
+                                 "40-60%": 4, "60-80%": 7, "80-100%": 10}
+                max_score = 10  # Bonus points
+            elif field == "functional_coverage":
+                coverage_scores = {"0%": 0, "1-20%": 1, "20-40%": 2, 
+                                 "40-70%": 3, "70-100%": 5}
+                max_score = 5  # Bonus points
+            elif field == "integration_coverage":
+                coverage_scores = {"0%": 0, "1-50%": 1, "50-80%": 2, "80-100%": 3}
+                max_score = 3  # Bonus points
+            else:  # workflow_coverage
+                coverage_scores = {"0%": 0, "1-20%": 1, "20-50%": 2, "50-100%": 4}
+                max_score = 4
+            
+            score_value = coverage_scores.get(value, 0)
+            total_weighted_score += score_value
+            # For automation bonuses, don't add to total_possible_score
+            if category != "automation":
+                total_possible_score += max_score
+                
+        elif field in test_type_fields:
+            if field == "test_types":
+                # Performance test types
+                type_scores = {"smoke": 1, "load": 2, "stress": 3, "spike": 4, "soak": 5}
+                score_value = type_scores.get(value, 0)
+                total_weighted_score += score_value
+                total_possible_score += 5
+            elif field == "load_testing":
+                # CI/CD load testing integration
+                total_weighted_score += (1 if value else 0) * weight
+                total_possible_score += weight
+            
         else:
-            # Boolean fields: 1 if True, 0 if False
-            total_weighted_score += (1 if value else 0) * weight
-        
-        total_possible_score += weight
+            # Boolean fields with potential negative weights (anti-patterns)
+            if weight < 0:
+                # For negative weights (anti-patterns)
+                if not value:  # Anti-pattern is present (field is False)
+                    total_weighted_score += weight  # Add penalty
+                # If value is True, no penalty applied
+                total_possible_score += abs(weight)
+            else:
+                # Normal positive scoring
+                total_weighted_score += (1 if value else 0) * weight
+                total_possible_score += weight
     
+    # Calculate percentage score
     if total_possible_score == 0:
         return 0.0
     
-    return round((total_weighted_score / total_possible_score) * 100, 2)
+    # For categories with bonuses (automation, cicd), allow scores > 100%
+    percentage_score = (total_weighted_score / category_max) * 100
+    
+    # Ensure score doesn't go below 0 due to penalties
+    final_score = max(0, percentage_score)
+    
+    return round(final_score, 2)
 
 
 def generate_feedback_and_suggestions(breakdown: Dict[str, Any], category: str, score: float) -> tuple[str, str]:

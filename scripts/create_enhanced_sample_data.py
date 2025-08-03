@@ -28,45 +28,71 @@ PRODUCTS = [
 
 # Security scorecard field configurations with realistic distributions
 SECURITY_FIELDS = {
-    "sast": 0.7,  # 70% of companies have SAST
+    # Static & Dynamic Testing
+    "sast": 0.7,  # 70% have SAST
     "dast": 0.5,  # 50% have DAST
-    "sast_dast_in_ci": 0.4,  # 40% integrate security in CI/CD
+    "sast_dast_in_ci": 0.4,  # 40% integrate in CI/CD
     "triaging_findings": 0.6,  # 60% triage findings
+    # Tooling & Integration
     "secrets_scanning": 0.3,  # 30% scan secrets
     "sca_tool_used": 0.4,  # 40% use SCA tools
     "cve_alerts": 0.5,  # 50% have CVE alerts
-    "pr_enforcement": 0.3,  # 30% enforce in PRs
-    "training": 0.2,  # 20% provide security training
+    "security_tools": 0.6,  # 60% use professional tools
+    # Policies & Practices
     "threat_modeling": 0.3,  # 30% do threat modeling
-    "bug_bounty_policy": 0.1,  # 10% have bug bounty
     "compliance": 0.4,  # 40% are compliant
-    "secure_design_reviews": 0.3,  # 30% do secure design reviews
-    "predeployment_threat_modeling": 0.2,  # 20% do pre-deployment threat modeling
+    "training": 0.2,  # 20% provide security training
+    "bug_bounty_policy": 0.1,  # 10% have bug bounty
+    "owasp_samm_integration": 0.2,  # 20% use OWASP SAMM
 }
 
 AUTOMATION_FIELDS = {
-    "ci_pipeline": 0.8,  # 80% have CI
-    "automated_testing": 0.6,  # 60% have automated testing
-    "deployment_automation": 0.5,  # 50% have automated deployment
-    "monitoring_alerts": 0.7,  # 70% have monitoring
-    "infrastructure_as_code": 0.4,  # 40% use IaC
+    # Test Automation Framework
+    "automated_testing": 0.8,  # 80% have some automation
+    "dedicated_environment": 0.6,  # 60% have dedicated env
+    "testing_framework": 0.7,  # 70% have framework
+    "external_updates": 0.4,  # 40% stay current
+    "quick_setup": 0.5,  # 50% can setup quickly
+    "source_controlled": 0.9,  # 90% use source control
+    "seeded_data": 0.7,  # 70% use seeded data
+    "test_independence": 0.8,  # 80% have independent tests
+    "data_reseeding": 0.6,  # 60% can re-seed easily
+    "test_subsets": 0.5,  # 50% can run subsets
+    "rapid_updates": 0.4,  # 40% update tests quickly
+    "database_automation": 0.5,  # 50% automate DB connections
+    "post_deploy_sanity": 0.6,  # 60% have post-deploy tests
+    "sanity_independence": 0.7,  # 70% have independent sanity tests
+    "smoke_testing": 0.8,  # 80% have smoke tests
+    "test_reporting": 0.7,  # 70% have reporting
+    "notification_integration": 0.4,  # 40% have notifications
 }
 
 PERFORMANCE_FIELDS = {
-    "load_testing": 0.4,  # 40% do load testing
-    "performance_monitoring": 0.6,  # 60% have performance monitoring
-    "caching_strategy": 0.5,  # 50% have caching
-    "database_optimization": 0.3,  # 30% optimize databases
-    "cdn_usage": 0.7,  # 70% use CDN
+    # Performance Strategy & Tooling
+    "regular_testing": 0.4,  # 40% test regularly
+    "dedicated_tools": 0.3,  # 30% use dedicated tools
+    "ci_integration": 0.2,  # 20% integrate in CI/CD
+    "defined_thresholds": 0.5,  # 50% have thresholds
+    "trend_tracking": 0.3,  # 30% track trends
+    # Test Coverage & Types
+    "production_like_env": 0.4,  # 40% test in prod-like env
+    # Metrics & Observability
+    "latency_throughput": 0.6,  # 60% measure basic metrics
+    "error_saturation": 0.4,  # 40% monitor error/saturation
+    "dashboard_viz": 0.3,  # 30% have dashboards
+    "automated_alerting": 0.4,  # 40% have alerting
+    "monitoring_integration": 0.2,  # 20% have full integration
 }
 
 CICD_FIELDS = {
+    # Pipeline Maturity
     "automated_builds": 0.8,  # 80% have automated builds
-    "automated_tests": 0.6,  # 60% run automated tests in pipeline
-    "code_quality_gates": 0.4,  # 40% have quality gates
-    "deployment_pipeline": 0.5,  # 50% have deployment pipelines
-    "rollback_strategy": 0.3,  # 30% have rollback strategy
-    "environment_parity": 0.4,  # 40% have environment parity
+    "automated_tests": 0.7,  # 70% have automated tests
+    "automated_deployment": 0.5,  # 50% have automated deployment
+    "rollback_capability": 0.4,  # 40% have rollback
+    "blue_green_deployment": 0.2,  # 20% use blue-green
+    "canary_releases": 0.1,  # 10% use canary
+    "infrastructure_as_code": 0.3,  # 30% use IaC
 }
 
 FIELD_CONFIGS = {
@@ -137,6 +163,39 @@ def generate_realistic_scorecard(category, base_date, variation=0.1):
         # Add some randomness to make it realistic
         probability = max(0, min(1, base_probability + random.uniform(-variation, variation)))
         breakdown[field] = random.random() < probability
+    
+    # Add special handling for non-boolean fields
+    if category == "automation":
+        # API Coverage
+        coverage_options = ["0%", "1-20%", "20-40%", "40-60%", "60-80%", "80-100%"]
+        breakdown["api_coverage"] = random.choice(coverage_options)
+        
+        # Functional Coverage
+        func_coverage_options = ["0%", "1-20%", "20-40%", "40-100%"]
+        breakdown["functional_coverage"] = random.choice(func_coverage_options)
+    
+    elif category == "performance":
+        # Test Types
+        test_types = ["smoke", "load", "stress", "spike", "soak"]
+        breakdown["test_types"] = random.choice(test_types)
+        
+        # Workflow Coverage
+        workflow_options = ["0%", "1-20%", "20-50%", "50-100%"]
+        breakdown["workflow_coverage"] = random.choice(workflow_options)
+    
+    elif category == "cicd":
+        # DORA Metrics
+        deployment_freq_options = ["monthly", "weekly", "daily", "on-demand"]
+        breakdown["deployment_frequency"] = random.choice(deployment_freq_options)
+        
+        lead_time_options = [">1week", "<1week", "<1day", "<1hour"]
+        breakdown["lead_time"] = random.choice(lead_time_options)
+        
+        recovery_time_options = [">1week", "<1week", "<1day", "<1hour"]
+        breakdown["recovery_time"] = random.choice(recovery_time_options)
+        
+        failure_rate_options = [">45%", "31-45%", "16-30%", "0-15%"]
+        breakdown["change_failure_rate"] = random.choice(failure_rate_options)
     
     return breakdown
 

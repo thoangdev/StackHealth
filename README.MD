@@ -55,7 +55,7 @@
 - **JWT Authentication** with secure token management
 - **Role-based Access Control** (Admin, User roles)
 - **Professional PDF Reports** with detailed breakdowns
-- **Historical Trend Analysis** with 90-day tracking
+- **Quarterly Trend Analysis** with year-over-year tracking
 - **Independent Category Scoring** - Each category scored 0-100%
 - **RESTful API** with OpenAPI/Swagger documentation
 
@@ -76,8 +76,8 @@
 
 ### 1. Clone and Setup
 ```bash
-git clone https://github.com/thoangdev/StackHealth.git
-cd StackHealth
+git clone https://github.com/thoangdev/stackhealth.git
+cd stackhealth
 
 # Create virtual environment
 python -m venv .venv
@@ -429,6 +429,26 @@ Each category is scored independently on a 0-100% scale:
 - Deployment & Release Management: 23% weight
 - Advanced practice bonuses can exceed 100% for cutting-edge implementations
 
+## 📈 Quarterly Assessment Approach
+
+### Assessment Cycle
+- **📅 Quarterly Reviews**: Scorecards designed for Q1, Q2, Q3, Q4 assessments
+- **🎯 Improvement Focus**: 3-month improvement cycles with clear targets
+- **📊 Year-over-Year Tracking**: Compare quarterly progress across years
+- **🔄 Continuous Improvement**: Regular reassessment drives DevOps maturity
+
+### Best Practices
+- **Baseline Assessment**: Establish Q1 baseline for each category
+- **Quarterly Planning**: Set specific improvement targets each quarter
+- **Mid-Quarter Check-ins**: Optional progress reviews at 6-week mark
+- **Annual Review**: Comprehensive year-end analysis and next-year planning
+
+### Improvement Tracking
+- **Trend Analysis**: Track score progression over quarters
+- **Category Comparison**: Identify strongest and weakest areas
+- **Action Planning**: Use detailed feedback for quarterly improvement plans
+- **Benchmark Progress**: Compare against industry standards and internal goals
+
 ## 📚 Documentation
 
 - **[📖 Complete Documentation](docs/)** - Full documentation index
@@ -473,8 +493,12 @@ Authorization: Bearer {token}
   }
 }
 
-# Get trends
-GET /trends/{product_id}/{category}?days=90
+# Get quarterly trends
+GET /trends/{product_id}/{category}?quarters=4
+Authorization: Bearer {token}
+
+# Get quarterly improvement data (one scorecard per quarter)
+GET /quarterly-improvement/{product_id}/{category}
 Authorization: Bearer {token}
 ```
 

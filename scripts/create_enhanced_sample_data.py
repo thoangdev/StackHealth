@@ -226,22 +226,51 @@ async def create_scorecard(session, token, product_id, category, date_str, break
 
 
 async def generate_historical_data(session, token, product_ids):
-    """Generate historical scorecard data for the past 90 days"""
+    """Generate quarterly scorecard data for the past 2 years"""
     categories = ["security", "automation", "performance", "cicd"]
     end_date = date.today()
     
-    # Generate data for past 90 days with weekly intervals
-    for days_back in range(0, 91, 7):  # Every 7 days
-        scorecard_date = end_date - timedelta(days=days_back)
-        date_str = scorecard_date.isoformat()
+    # Generate quarterly data for past 8 quarters (2 years)
+    quarters = []
+    current_year = end_date.year
+    current_quarter = ((end_date.month - 1) // 3) + 1
+    
+    # Generate 8 quarters of data
+    for i in range(8):
+        quarter = current_quarter - i
+        year = current_year
+        
+        if quarter <= 0:
+            quarter += 4
+            year -= 1
+        
+        # Set date to middle of quarter
+        quarter_months = {1: 2, 2: 5, 3: 8, 4: 11}  # Feb, May, Aug, Nov
+        quarter_date = date(year, quarter_months[quarter], 15)
+        
+        # Skip future dates
+        if quarter_date <= end_date:
+            quarters.append((quarter_date, f"{year}-Q{quarter}"))
+    
+    print(f"\n📊 Generating quarterly data for {len(quarters)} quarters...")
+    
+    for quarter_date, quarter_label in reversed(quarters):  # Oldest first
+        date_str = quarter_date.isoformat()
         
         for product_id in product_ids:
             for category in categories:
-                # Add some improvement over time (older data tends to be worse)
-                improvement_factor = days_back / 90.0 * 0.2  # Up to 20% worse for older data
-                breakdown = generate_realistic_scorecard(category, scorecard_date, variation=0.1 + improvement_factor)
+                # Add improvement over time (older quarters tend to have lower scores)
+                quarters_back = len(quarters) - quarters.index((quarter_date, quarter_label)) - 1
+                improvement_factor = quarters_back / 8.0 * 0.3  # Up to 30% improvement over 2 years
+                
+                breakdown = generate_realistic_scorecard(
+                    category, 
+                    quarter_date, 
+                    variation=0.1 + (improvement_factor * 0.5)
+                )
                 
                 await create_scorecard(session, token, product_id, category, date_str, breakdown)
+                print(f"  📈 {quarter_label} {category.capitalize()} scorecard for Product {product_id}")
                 
                 # Small delay to avoid overwhelming the server
                 await asyncio.sleep(0.1)

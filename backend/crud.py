@@ -340,15 +340,44 @@ def get_trend_data(
     db: Session, 
     product_id: int, 
     category: str, 
-    days: int = 30
+    quarters: int = 4
 ) -> List[database.Scorecard]:
-    """Get trend data for a product's specific category over time"""
+    """Get quarterly trend data for a product's specific category over time"""
     from datetime import datetime, timedelta
     
-    start_date = datetime.now().date() - timedelta(days=days)
+    # Calculate start date based on quarters (each quarter = 3 months)
+    months_back = quarters * 3
+    start_date = datetime.now().date() - timedelta(days=months_back * 30)  # Approximate
     
     return db.query(database.Scorecard).filter(
         database.Scorecard.product_id == product_id,
         database.Scorecard.category == category,
         database.Scorecard.date >= start_date
     ).order_by(database.Scorecard.date.asc()).all()
+
+
+def get_quarterly_improvement_data(
+    db: Session,
+    product_id: int,
+    category: str
+) -> List[database.Scorecard]:
+    """Get quarterly assessment data showing improvement trends"""
+    from datetime import datetime, timedelta
+    
+    # Get last 12 months of data to show quarterly progression
+    start_date = datetime.now().date() - timedelta(days=365)
+    
+    scorecards = db.query(database.Scorecard).filter(
+        database.Scorecard.product_id == product_id,
+        database.Scorecard.category == category,
+        database.Scorecard.date >= start_date
+    ).order_by(database.Scorecard.date.asc()).all()
+    
+    # Group by quarters and return the most recent scorecard per quarter
+    quarterly_data = {}
+    for scorecard in scorecards:
+        quarter_key = f"{scorecard.date.year}-Q{((scorecard.date.month - 1) // 3) + 1}"
+        if quarter_key not in quarterly_data or scorecard.date > quarterly_data[quarter_key].date:
+            quarterly_data[quarter_key] = scorecard
+    
+    return list(quarterly_data.values())

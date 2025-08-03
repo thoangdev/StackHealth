@@ -202,11 +202,11 @@ def get_scorecard(
 def get_trend_data(
     product_id: int,
     category: str,
-    days: int = 30,
+    quarters: int = 4,
     db: Session = Depends(database.get_db),
     current_user: database.AdminUser = Depends(auth.get_current_user)
 ):
-    """Get trend data for a product's specific category"""
+    """Get quarterly trend data for a product's specific category"""
     # Verify product exists
     product = crud.get_product_by_id(db, product_id=product_id)
     if not product:
@@ -220,7 +220,7 @@ def get_trend_data(
             detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}"
         )
     
-    trend_data = crud.get_trend_data(db, product_id, category, days)
+    trend_data = crud.get_trend_data(db, product_id, category, quarters)
     
     return [
         schemas.TrendData(
@@ -229,6 +229,39 @@ def get_trend_data(
             category=scorecard.category
         )
         for scorecard in trend_data
+    ]
+
+
+@app.get("/quarterly-improvement/{product_id}/{category}", response_model=List[schemas.TrendData])
+def get_quarterly_improvement(
+    product_id: int,
+    category: str,
+    db: Session = Depends(database.get_db),
+    current_user: database.AdminUser = Depends(auth.get_current_user)
+):
+    """Get quarterly improvement data showing one scorecard per quarter"""
+    # Verify product exists
+    product = crud.get_product_by_id(db, product_id=product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Validate category
+    valid_categories = ["automation", "performance", "security", "cicd"]
+    if category not in valid_categories:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}"
+        )
+    
+    quarterly_data = crud.get_quarterly_improvement_data(db, product_id, category)
+    
+    return [
+        schemas.TrendData(
+            date=scorecard.date,
+            score=scorecard.score,
+            category=scorecard.category
+        )
+        for scorecard in quarterly_data
     ]
 
 

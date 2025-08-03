@@ -1,53 +1,128 @@
 # 🚀 StackHealth Scorecard Platform v2.0
+## 🏃 Quick Start (Docker - Recommended)
 
-<div align="center">
+### Prerequisites
+- Docker and Docker Compose
+- Git
+
+### 1. Clone and Start
+```bash
+git clone https://github.com/thoangdev/stackhealth.git
+cd stackhealth
+
+# Start the application with Docker
+docker-compose up --build -d
+
+# Check if services are running
+docker-compose ps
+```
+
+### 2. Access the Application
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+
+### 3. Create Your First Admin User
+```bash
+# Register the first user
+curl -X POST http://localhost:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@yourcompany.com","password":"your-secure-password"}'
+
+# Make them admin (first-time setup only)
+curl -X POST http://localhost:8000/auth/setup-first-admin \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":1,"is_admin":true}'
+```
+
+### 4. Login and Explore
+- Go to http://localhost:3000
+- Login with your admin credentials
+- Create products and start assessments!
+
+## 👥 User Roles
+
+### 🔑 **Admin Users**
+- ✅ **Full Dashboard Access** - View all assessment data
+- ✅ **Create Scorecards** - Submit new assessments anytime
+- ✅ **User Management** - Promote/demote other users
+- ✅ **Product Management** - Create and manage software products
+- ✅ **Trend Analysis** - View historical performance data
+
+### 👤 **Regular Users** 
+- ✅ **View Trends** - Access to trend analysis and reports
+- ✅ **Dashboard Access** - Read-only access to assessment data
+- ❌ **Cannot Create Scorecards** - Read-only access
+- ❌ **Cannot Manage Users** - No admin privileges
+
+## 🛠️ Development Setup
+
+### Prerequisites
+- Python 3.9+
+- Node.js (for development tools)
+
+### 1. Local Development
+```bash
+# Clone repository
+git clone https://github.com/thoangdev/stackhealth.git
+cd stackhealth
+
+# Setup backend
+cd backend
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# Initialize database
+python -c "from database import engine, Base; Base.metadata.create_all(bind=engine)"
+
+# Start backend
+python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# Start frontend (in new terminal)
+cd ../frontend
+python -m http.server 3000
+```
+">
 
 ![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9+-green.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
 ![Security](https://img.shields.io/badge/security-OWASP%20SAMM-red.svg)
-![DORA](https://img.shields.io/badge/DORA-metrics-purple.svg)
 
-**Enterprise-grade Software Scorecard Dashboard with DORA Metrics, OWASP SAMM Security Assessment, Performance Testing Integration, and Advanced CI/CD Pipeline Evaluation**
+**Enterprise-grade Software Scorecard Dashboard with User Management, Role-based Access Control, and Comprehensive Quality Assessment**
 
-[Features](#-features) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [API Reference](#-api-reference) • [Contributing](#-contributing)
+[Features](#-features) • [Quick Start](#-quick-start) • [User Roles](#-user-roles) • [API Reference](#-api-reference) • [Contributing](#-contributing)
 
 </div>
 
 ## 🌟 Features
 
-### 📊 **DORA Metrics Integration**
-- **Deployment Frequency** assessment (On-demand to Monthly)
-- **Lead Time for Changes** tracking (Hours to Months)
-- **Mean Time to Recovery** measurement (Minutes to Weeks)
-- **Change Failure Rate** analysis (0% to 30%+)
+### � **User Management & Security**
+- **Self-Service Registration** - Users can create their own accounts
+- **Role-based Access Control** - Admin and User roles with different permissions
+- **JWT Authentication** with secure token management
+- **Admin Management Panel** - Promote/demote users to admin status
 
-### 🔒 **OWASP SAMM Security Assessment**
-- 30-point comprehensive security evaluation
-- Static/Dynamic Application Security Testing (SAST/DAST)
-- Software Composition Analysis (SCA) integration
-- Threat modeling and secure design practices
-- Security culture and governance assessment
+### � **Assessment Categories**
+- **🔒 Security Assessment** - OWASP SAMM-based security evaluation
+- **🤖 Automation Testing** - Test framework and coverage assessment  
+- **⚡ Performance Testing** - Load testing and monitoring evaluation
+- **🔄 CI/CD Pipeline** - DevOps maturity and DORA metrics
 
-### 🔧 **Advanced CI/CD Pipeline Evaluation**
-- 45-point pipeline maturity assessment with DORA metrics
-- Infrastructure as Code evaluation
-- Advanced deployment strategies (Blue-Green, Canary)
-- Security integration in pipelines
-- GitOps and modern practices assessment
+### 📈 **Dashboard & Analytics**
+- **Trend Analysis** - View performance trends over time
+- **PDF Reports** - Professional assessment reports
+- **Product Management** - Organize assessments by software products
+- **Real-time Scoring** - Dynamic scoring based on assessment criteria
 
-### 🤖 **Comprehensive Test Automation Assessment**
-- 40-point automation maturity evaluation with coverage bonuses
-- Test framework architecture and reliability analysis
-- API and functional test coverage tracking (0-100%)
-- Automated testing environment assessment
-- CI/CD integration and advanced reporting capabilities
-
-### ⚡ **Performance Testing Integration**
-- 30-point performance testing scorecard
-- Load, stress, spike, and soak testing evaluation
-- Real-time performance monitoring and alerting systems
+### 🚀 **Enterprise Ready**
+- **Docker Containerized** - Easy deployment with docker-compose
+- **RESTful API** - Full OpenAPI/Swagger documentation
+- **Database Persistence** - SQLite with easy migration to PostgreSQL
+- **Responsive UI** - Works on desktop and mobile devices
 - Production-like environment testing assessment
 - SLA/SLO definition and trend analysis
 
@@ -124,30 +199,92 @@ open ../frontend/index.html
 ## 📁 Project Structure
 
 ```
-StackHealth/
-├── 🔧 backend/                 # FastAPI application
-│   ├── auth.py                # JWT authentication
-│   ├── crud.py                # Database operations
-│   ├── database.py            # Database models
-│   ├── main.py                # FastAPI app
-│   ├── pdf_generator.py       # PDF report generation
-│   ├── schemas.py             # Pydantic models
-│   ├── requirements.txt       # Python dependencies
-│   └── tests/                 # Test suite
-├── 🎨 frontend/               # Web interface
-│   ├── index.html            # Main application
-│   └── app.js                # JavaScript logic
-├── 🚢 deployment/             # Production deployment
-│   ├── kubernetes.yaml       # K8s configurations
-│   ├── terraform/            # Infrastructure as code
-│   └── deploy.sh             # Deployment script
-├── 📝 docs/                   # Documentation
-├── 🔄 scripts/               # Utility scripts
-├── ⚙️ config/                # Configuration files
-│   ├── .env.example          # Environment template
-│   ├── .env.development      # Development config
-│   └── .env.production       # Production config
-├── 🧪 .github/               # GitHub workflows
+stackhealth/
+├── � docker-compose.yml         # Docker orchestration
+├── 🐳 Dockerfile                 # Container definition
+├── �🔧 backend/                   # FastAPI application
+│   ├── auth.py                  # JWT authentication & user management
+│   ├── crud.py                  # Database operations
+│   ├── database.py              # SQLAlchemy models
+│   ├── main.py                  # FastAPI app with all endpoints
+│   ├── pdf_generator.py         # Assessment report generation
+│   ├── schemas.py               # Pydantic models
+│   ├── requirements.txt         # Python dependencies
+│   └── tests/                   # Test suite
+├── 🎨 frontend/                  # Web interface
+│   ├── index.html              # Single-page application
+│   └── app.js                  # JavaScript application logic
+├── ⚙️ config/                   # Configuration
+│   └── .env.example            # Environment template
+├── 📊 data/                     # Database storage
+│   └── scorecard.db            # SQLite database
+├── 🚢 deployment/               # Deployment configs
+├── 📝 docs/                     # Documentation
+└── 🔄 scripts/                 # Utility scripts
+```
+
+## 🎯 Usage Guide
+
+### For Administrators
+
+1. **User Management**
+   - Access "Admin" tab after logging in
+   - View all registered users
+   - Promote users to admin or revoke admin privileges
+
+2. **Creating Assessments**
+   - Use "New Scorecard" tab
+   - Select a product and assessment category
+   - Complete the assessment questionnaire
+   - Generate PDF reports
+
+3. **Managing Products**
+   - Products are created as needed during assessments
+   - Each product can have multiple assessment categories
+
+### For Regular Users
+
+1. **Viewing Trends**
+   - Access "Trends" tab to view historical data
+   - Filter by product and category
+   - Analyze performance over time
+
+2. **Dashboard Access**
+   - View assessment summaries
+   - Access existing reports
+   - Read-only access to all data
+
+## 🔧 Configuration
+
+### Environment Variables
+
+Create a `.env` file based on `.env.example`:
+
+```bash
+# Database Configuration
+DATABASE_URL=sqlite:///./data/scorecard.db
+
+# API Configuration  
+API_HOST=0.0.0.0
+API_PORT=8000
+DEBUG=true
+
+# Security
+SECRET_KEY=your-production-secret-key-here
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# CORS (for development)
+ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+```
+
+### Docker Configuration
+
+The application includes production-ready Docker configuration:
+
+- **Multi-stage builds** for optimized images
+- **Health checks** for service monitoring  
+- **Volume mounts** for data persistence
+- **Environment-based configuration**
 │   ├── workflows/            # CI/CD pipelines
 │   ├── ISSUE_TEMPLATE/       # Issue templates
 │   └── pull_request_template.md

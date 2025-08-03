@@ -81,14 +81,25 @@ async def get_current_user(
     return user
 
 
-def create_admin_user(db: Session, email: str, password: str):
+def create_admin_user(db: Session, email: str, password: str, is_admin: bool = False):
     """Create a new admin user"""
     hashed_password = get_password_hash(password)
     db_user = database.AdminUser(
         email=email,
-        hashed_password=hashed_password
+        hashed_password=hashed_password,
+        is_admin=is_admin
     )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
+
+
+async def get_current_admin_user(current_user: database.AdminUser = Depends(get_current_user)):
+    """Get current user and verify they are an admin"""
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+    return current_user

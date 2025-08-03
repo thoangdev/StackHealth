@@ -64,7 +64,7 @@ def register_admin_user(
     user_data: schemas.AdminUserCreate,
     db: Session = Depends(database.get_db)
 ):
-    """Register a new admin user (for demo purposes - restrict in production)"""
+    """Register a new user (anyone can register, but they won't be admin by default)"""
     # Check if user already exists
     existing_user = auth.get_user_by_email(db, user_data.email)
     if existing_user:
@@ -73,7 +73,67 @@ def register_admin_user(
             detail="Email already registered"
         )
     
-    return auth.create_admin_user(db, user_data.email, user_data.password)
+    return auth.create_admin_user(db, user_data.email, user_data.password, is_admin=False)
+
+
+@app.get("/auth/me", response_model=schemas.AdminUser)
+def get_current_user_info(
+    current_user: database.AdminUser = Depends(auth.get_current_user)
+):
+    """Get current user information"""
+    return current_user
+
+
+@app.get("/auth/users", response_model=List[schemas.AdminUser])
+def get_all_users(
+    current_user: database.AdminUser = Depends(auth.get_current_admin_user),
+    db: Session = Depends(database.get_db)
+):
+    """Get all users (admin only)"""
+    return db.query(database.AdminUser).all()
+
+
+@app.post("/auth/manage-admin")
+def manage_admin_privileges(
+    request: schemas.AdminManagementRequest,
+    current_user: database.AdminUser = Depends(auth.get_current_admin_user),
+    db: Session = Depends(database.get_db)
+):
+    """Grant or revoke admin privileges (admin only)"""
+    target_user = db.query(database.AdminUser).filter(database.AdminUser.id == request.user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    target_user.is_admin = request.is_admin
+    db.commit()
+    db.refresh(target_user)
+    
+    return {"message": f"Admin privileges {'granted' if request.is_admin else 'revoked'} for {target_user.email}"}
+
+
+@app.post("/auth/setup-first-admin")
+def setup_first_admin(
+    request: schemas.AdminManagementRequest,
+    db: Session = Depends(database.get_db)
+):
+    """Setup the first admin user (only works if no admins exist)"""
+    # Check if any admin users already exist
+    existing_admin = db.query(database.AdminUser).filter(database.AdminUser.is_admin == True).first()
+    if existing_admin:
+        raise HTTPException(
+            status_code=400, 
+            detail="Admin users already exist. Use normal admin management."
+        )
+    
+    target_user = db.query(database.AdminUser).filter(database.AdminUser.id == request.user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    target_user.is_admin = True
+    db.commit()
+    db.refresh(target_user)
+    
+    return {"message": f"First admin setup complete for {target_user.email}"}
 
 
 # Product endpoints (protected)

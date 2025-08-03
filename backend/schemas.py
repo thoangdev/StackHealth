@@ -15,6 +15,7 @@ class AdminUserCreate(AdminUserBase):
 class AdminUser(AdminUserBase):
     id: int
     is_active: bool
+    is_admin: bool
     created_at: datetime
 
     class Config:
@@ -33,6 +34,11 @@ class TokenData(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+
+class AdminManagementRequest(BaseModel):
+    user_id: int
+    is_admin: bool
 
 
 # Product schemas (renamed from Project)

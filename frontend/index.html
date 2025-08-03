@@ -264,6 +264,38 @@
             color: #666;
         }
 
+        .alert {
+            padding: 15px 20px;
+            margin: 20px auto;
+            border-radius: 8px;
+            max-width: 1200px;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .error {
             background: #f8d7da;
             color: #721c24;
@@ -360,24 +392,63 @@
 
         <!-- Authentication Section -->
         <div id="authSection" class="auth-container">
-            <h2>Welcome Back</h2>
-            <p style="margin-bottom: 30px; color: #666;">Sign in to access your dashboard</p>
-            
-            <div class="form-group">
-                <label for="loginEmail">Email Address</label>
-                <input type="email" id="loginEmail" placeholder="admin@company.com" value="admin@company.com">
+            <div class="tab-container">
+                <button class="tab active" onclick="switchAuthTab('login')">Sign In</button>
+                <button class="tab" onclick="switchAuthTab('register')">Create Account</button>
             </div>
             
-            <div class="form-group">
-                <label for="loginPassword">Password</label>
-                <input type="password" id="loginPassword" placeholder="Enter your password" value="admin123">
+            <!-- Login Tab -->
+            <div id="loginTab" class="tab-content active">
+                <h2>Welcome Back</h2>
+                <p style="margin-bottom: 30px; color: #666;">Sign in to access your dashboard</p>
+                
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="loginEmail">Email Address</label>
+                        <input type="email" id="loginEmail" placeholder="admin@company.com" value="admin@company.com" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="loginPassword">Password</label>
+                        <input type="password" id="loginPassword" placeholder="Enter your password" value="admin123" required>
+                    </div>
+                    
+                    <button type="submit" class="btn">Sign In</button>
+                </form>
+                
+                <p style="margin-top: 20px; font-size: 14px; color: #666;">
+                    Demo Credentials: admin@company.com / admin123
+                </p>
             </div>
             
-            <button class="btn" onclick="login()">Sign In</button>
-            
-            <p style="margin-top: 20px; font-size: 14px; color: #666;">
-                Demo Credentials: admin@company.com / admin123
-            </p>
+            <!-- Register Tab -->
+            <div id="registerTab" class="tab-content">
+                <h2>Create Account</h2>
+                <p style="margin-bottom: 30px; color: #666;">Join the platform to start tracking software quality</p>
+                
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label for="registerEmail">Email Address</label>
+                        <input type="email" id="registerEmail" placeholder="your.email@company.com" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="registerPassword">Password</label>
+                        <input type="password" id="registerPassword" placeholder="Choose a secure password" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm Password</label>
+                        <input type="password" id="confirmPassword" placeholder="Confirm your password" required>
+                    </div>
+                    
+                    <button type="submit" class="btn">Create Account</button>
+                </form>
+                
+                <p style="margin-top: 20px; font-size: 14px; color: #666;">
+                    New accounts start as regular users. Contact an admin to get admin privileges.
+                </p>
+            </div>
         </div>
 
         <!-- Main Dashboard Section -->
@@ -395,34 +466,37 @@
                     <button class="tab active" onclick="showTab('scorecard')">📊 New Scorecard</button>
                     <button class="tab" onclick="showTab('dashboard')">📈 Dashboard</button>
                     <button class="tab" onclick="showTab('trends')">📉 Trends</button>
+                    <button class="tab" id="adminTab" onclick="showTab('admin')" style="display: none;">👥 Admin</button>
                 </div>
 
                 <!-- Scorecard Creation Tab -->
                 <div id="scorecardTab" class="tab-content active">
                     <h2>Create New Scorecard Assessment</h2>
                     
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="productSelect">Product</label>
-                            <select id="productSelect" required>
-                                <option value="">Select Product...</option>
-                            </select>
+                    <form id="scorecardForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="productSelect">Product</label>
+                                <select id="productSelect" required>
+                                    <option value="">Select Product...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="categorySelect">Category</label>
+                                <select id="categorySelect" required>
+                                    <option value="">Select Category...</option>
+                                    <option value="Security">🔒 Security Assessment</option>
+                                    <option value="Automation">🤖 Automation</option>
+                                    <option value="Performance">⚡ Performance</option>
+                                    <option value="CI/CD">🔄 CI/CD Pipeline</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="categorySelect">Category</label>
-                            <select id="categorySelect" required>
-                                <option value="">Select Category...</option>
-                                <option value="Security">🔒 Security Assessment</option>
-                                <option value="Automation">🤖 Automation</option>
-                                <option value="Performance">⚡ Performance</option>
-                                <option value="CI/CD">🔄 CI/CD Pipeline</option>
-                            </select>
-                        </div>
-                    </div>
 
-                    <div id="scoringForm"></div>
-                    
-                    <button class="btn" onclick="submitScorecard()">Generate Assessment Report</button>
+                        <div id="scoringForm"></div>
+                        
+                        <button type="submit" class="btn">Generate Assessment Report</button>
+                    </form>
                 </div>
 
                 <!-- Dashboard Tab -->
@@ -455,6 +529,17 @@
                     <button class="btn" onclick="loadTrends()">Generate Trend Report</button>
                     <div id="trendsContent"></div>
                 </div>
+
+                <!-- Admin Tab -->
+                <div id="adminTab" class="tab-content">
+                    <h2>User Management</h2>
+                    
+                    <div class="form-group">
+                        <button class="btn" onclick="loadUsers()">Refresh User List</button>
+                    </div>
+                    
+                    <div id="usersList" class="loading">Loading users...</div>
+                </div>
             </div>
 
             <div id="results" class="results hidden">
@@ -466,6 +551,8 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

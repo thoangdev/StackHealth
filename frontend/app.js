@@ -31,12 +31,26 @@ class ScorecardDashboard {
 
     setupEventListeners() {
         // Authentication forms
-        document.getElementById('loginForm').addEventListener('submit', (e) => this.handleLogin(e));
-        document.getElementById('registerForm').addEventListener('submit', (e) => this.handleRegister(e));
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => this.handleLogin(e));
+        }
+        
+        const registerForm = document.getElementById('registerForm');
+        if (registerForm) {
+            registerForm.addEventListener('submit', (e) => this.handleRegister(e));
+        }
         
         // Dashboard forms
-        document.getElementById('productForm').addEventListener('submit', (e) => this.handleCreateProduct(e));
-        document.getElementById('scorecardForm').addEventListener('submit', (e) => this.handleSubmitScorecard(e));
+        const productForm = document.getElementById('productForm');
+        if (productForm) {
+            productForm.addEventListener('submit', (e) => this.handleCreateProduct(e));
+        }
+        
+        const scorecardForm = document.getElementById('scorecardForm');
+        if (scorecardForm) {
+            scorecardForm.addEventListener('submit', (e) => this.handleSubmitScorecard(e));
+        }
     }
 
     setCurrentDate() {
@@ -72,6 +86,13 @@ class ScorecardDashboard {
         e.preventDefault();
         const email = document.getElementById('registerEmail').value;
         const password = document.getElementById('registerPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        // Validate password confirmation
+        if (password !== confirmPassword) {
+            this.showAlert('Passwords do not match!', 'error');
+            return;
+        }
 
         try {
             await axios.post(`${this.baseURL}/auth/register`, {
@@ -81,6 +102,8 @@ class ScorecardDashboard {
 
             this.showAlert('Registration successful! Please login.', 'success');
             this.switchAuthTab('login');
+            // Clear form
+            document.getElementById('registerForm').reset();
         } catch (error) {
             this.showAlert('Registration failed: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
         }
@@ -101,13 +124,75 @@ class ScorecardDashboard {
 
     showAuthSection() {
         document.getElementById('authSection').classList.remove('hidden');
-        document.getElementById('dashboard').classList.add('hidden');
+        document.getElementById('mainSection').classList.add('hidden');
     }
 
     showDashboard() {
         document.getElementById('authSection').classList.add('hidden');
-        document.getElementById('dashboard').classList.remove('hidden');
+        document.getElementById('mainSection').classList.remove('hidden');
         this.setupAxiosDefaults();
+        this.loadCurrentUser();
+    }
+
+    async loadCurrentUser() {
+        try {
+            const response = await axios.get(`${this.baseURL}/auth/me`);
+            this.currentUser = response.data;
+            
+            // Update user info display
+            const userEmailElement = document.getElementById('userEmail');
+            if (userEmailElement) {
+                userEmailElement.textContent = this.currentUser.email;
+            }
+            
+            // Update role description
+            const roleElement = document.querySelector('.user-info small');
+            if (roleElement) {
+                roleElement.textContent = this.currentUser.is_admin ? 'Administrator' : 'User';
+            }
+            
+            // Configure UI based on role
+            this.configureUIForRole();
+            
+        } catch (error) {
+            console.error('Failed to load user info:', error);
+            this.showAlert('Failed to load user information', 'error');
+            // If we can't load user info, the token might be invalid
+            this.logout();
+        }
+    }
+
+    configureUIForRole() {
+        const isAdmin = this.currentUser && this.currentUser.is_admin;
+        
+        // Show/hide admin tab
+        const adminTab = document.getElementById('adminTab');
+        if (adminTab) {
+            adminTab.style.display = isAdmin ? 'block' : 'none';
+        }
+        
+        // Show/hide scorecard creation tab (admin only)
+        const scorecardTabButton = document.querySelector('button[onclick="showTab(\'scorecard\')"]');
+        if (scorecardTabButton) {
+            scorecardTabButton.style.display = isAdmin ? 'block' : 'none';
+        }
+        
+        // For regular users, show trends tab by default and remove other tabs
+        if (!isAdmin) {
+            // Hide scorecard tab content
+            const scorecardTab = document.getElementById('scorecardTab');
+            if (scorecardTab) {
+                scorecardTab.style.display = 'none';
+            }
+            
+            // Switch to trends tab
+            setTimeout(() => {
+                const trendsButton = document.querySelector('button[onclick="showTab(\'trends\')"]');
+                if (trendsButton) {
+                    trendsButton.click();
+                }
+            }, 100);
+        }
     }
 
     switchAuthTab(tab) {
@@ -628,17 +713,121 @@ class ScorecardDashboard {
         });
     }
 
-    // UI Helper Methods
-    switchTab(tabName) {
-        document.querySelectorAll('#dashboard .tab').forEach(tab => tab.classList.remove('active'));
-        document.querySelectorAll('#dashboard .tab-content').forEach(content => content.classList.remove('active'));
+    // Admin Management Methods
+    async loadUsers() {
+        if (!this.currentUser || !this.currentUser.is_admin) {
+            this.showAlert('Admin privileges required', 'error');
+            return;
+        }
+
+        try {
+            const response = await axios.get(`${this.baseURL}/auth/users`);
+            this.displayUsers(response.data);
+        } catch (error) {
+            console.error('Failed to load users:', error);
+            this.showAlert('Failed to load users: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
+        }
+    }
+
+    displayUsers(users) {
+        const usersList = document.getElementById('usersList');
         
-        event.target.classList.add('active');
+        if (users.length === 0) {
+            usersList.innerHTML = '<p>No users found.</p>';
+            return;
+        }
+
+        const usersHTML = users.map(user => `
+            <div class="user-item" style="
+                background: white; 
+                border: 1px solid #e9ecef; 
+                border-radius: 8px; 
+                padding: 15px; 
+                margin-bottom: 10px;
+                display: flex; 
+                justify-content: space-between; 
+                align-items: center;
+            ">
+                <div>
+                    <strong>${user.email}</strong>
+                    <br><small style="color: #666;">
+                        ID: ${user.id} | 
+                        Status: ${user.is_active ? 'Active' : 'Inactive'} | 
+                        Role: ${user.is_admin ? 'Admin' : 'User'} |
+                        Joined: ${new Date(user.created_at).toLocaleDateString()}
+                    </small>
+                </div>
+                <div>
+                    ${user.id !== this.currentUser.id ? `
+                        <button 
+                            class="btn ${user.is_admin ? 'btn-danger' : 'btn-secondary'}" 
+                            onclick="dashboard.toggleAdminStatus(${user.id}, ${!user.is_admin})"
+                            style="width: auto; padding: 8px 16px; margin-left: 10px;"
+                        >
+                            ${user.is_admin ? 'Remove Admin' : 'Make Admin'}
+                        </button>
+                    ` : '<span style="color: #666;">(You)</span>'}
+                </div>
+            </div>
+        `).join('');
+
+        usersList.innerHTML = usersHTML;
+    }
+
+    async toggleAdminStatus(userId, makeAdmin) {
+        if (!this.currentUser || !this.currentUser.is_admin) {
+            this.showAlert('Admin privileges required', 'error');
+            return;
+        }
+
+        try {
+            const response = await axios.post(`${this.baseURL}/auth/manage-admin`, {
+                user_id: userId,
+                is_admin: makeAdmin
+            });
+
+            this.showAlert(response.data.message, 'success');
+            this.loadUsers(); // Refresh the user list
+        } catch (error) {
+            console.error('Failed to update admin status:', error);
+            this.showAlert('Failed to update admin status: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
+        }
+    }
+
+    // UI Helper Methods
+    switchTab(tabName, targetElement = null) {
+        // Check permissions for admin-only tabs
+        if ((tabName === 'admin' || tabName === 'scorecard') && (!this.currentUser || !this.currentUser.is_admin)) {
+            this.showAlert('Admin privileges required to access this section', 'error');
+            return;
+        }
+        
+        document.querySelectorAll('#mainSection .tab').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('#mainSection .tab-content').forEach(content => content.classList.remove('active'));
+        
+        // Find and activate the clicked tab
+        if (targetElement) {
+            targetElement.classList.add('active');
+        } else if (event && event.target) {
+            event.target.classList.add('active');
+        } else {
+            // Find the tab button by its onclick attribute
+            const tabButton = document.querySelector(`button[onclick*="showTab('${tabName}')"]`);
+            if (tabButton) {
+                tabButton.classList.add('active');
+            }
+        }
+        
         document.getElementById(`${tabName}Tab`).classList.add('active');
         
         // Load data when switching to certain tabs
-        if (tabName === 'reports') {
+        if (tabName === 'admin') {
+            this.loadUsers();
+        } else if (tabName === 'dashboard') {
             this.loadScorecards();
+        } else if (tabName === 'trends') {
+            // Load products for trends selector
+            this.loadProducts();
         }
     }
 
@@ -674,7 +863,12 @@ class ScorecardDashboard {
 }
 
 // Global functions for HTML onclick handlers
+// Global functions for onclick handlers
 function switchTab(tabName) {
+    dashboard.switchTab(tabName);
+}
+
+function showTab(tabName) {
     dashboard.switchTab(tabName);
 }
 
@@ -686,8 +880,20 @@ function updateScorecardFields() {
     dashboard.updateScorecardFields();
 }
 
+function submitScorecard() {
+    dashboard.handleSubmitScorecard(new Event('submit'));
+}
+
 function loadTrends() {
     dashboard.loadTrends();
+}
+
+function loadUsers() {
+    dashboard.loadUsers();
+}
+
+function downloadPDF() {
+    dashboard.downloadPDF();
 }
 
 function logout() {

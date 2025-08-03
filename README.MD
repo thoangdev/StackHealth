@@ -76,10 +76,10 @@ pip install -r backend/requirements.txt
 ### 2. Configuration
 ```bash
 # Copy environment configuration
-cp .env.example .env.development
+cp config/.env.example config/.env.development
 
 # Edit configuration (optional)
-nano .env.development
+nano config/.env.development
 ```
 
 ### 3. Initialize Database
@@ -129,12 +129,15 @@ StackHealth/
 │   └── deploy.sh             # Deployment script
 ├── 📝 docs/                   # Documentation
 ├── 🔄 scripts/               # Utility scripts
+├── ⚙️ config/                # Configuration files
+│   ├── .env.example          # Environment template
+│   ├── .env.development      # Development config
+│   └── .env.production       # Production config
 ├── 🧪 .github/               # GitHub workflows
 │   ├── workflows/            # CI/CD pipelines
 │   ├── ISSUE_TEMPLATE/       # Issue templates
 │   └── pull_request_template.md
 ├── 🐳 Dockerfile             # Container configuration
-├── 🔐 .env.example           # Environment template
 └── 📋 requirements files     # Dependencies
 ```
 
@@ -248,11 +251,13 @@ Each category uses industry-standard weights:
 
 ## 📚 Documentation
 
-- **[API Documentation](docs/API.md)** - Complete API reference
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment
-- **[Security Guide](SECURITY.md)** - Security best practices
-- **[Contributing Guide](CONTRIBUTING.md)** - Development guidelines
-- **[Changelog](CHANGELOG.md)** - Version history
+- **[📖 Complete Documentation](docs/)** - Full documentation index
+- **[👤 User Guide](docs/USER_GUIDE.md)** - End user instructions
+- **[🛠️ Development Guide](docs/DEVELOPMENT.md)** - Developer setup and workflow
+- **[🤝 Contributing Guide](docs/CONTRIBUTING.md)** - Development guidelines
+- **[🔒 Security Guide](docs/SECURITY.md)** - Security best practices
+- **[📝 Changelog](docs/CHANGELOG.md)** - Version history
+- **[🏗️ Project Overview](docs/PROJECT_OVERVIEW.md)** - Technical architecture
 
 ## 🔗 API Reference
 

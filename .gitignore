@@ -104,6 +104,11 @@ ENV/
 env.bak/
 venv.bak/
 
+# Config files (keep .example files)
+config/.env.development
+config/.env.production
+config/.env.local
+
 # Spyder project settings
 .spyderproject
 .spyproject

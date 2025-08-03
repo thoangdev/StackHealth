@@ -9,6 +9,7 @@ import schemas
 import database
 import auth
 from pdf_generator import generate_pdf_report
+from health import router as health_router
 
 app = FastAPI(
     title="Software Scorecard Dashboard API",
@@ -26,6 +27,9 @@ app.add_middleware(
 )
 
 security = HTTPBearer()
+
+# Include health check routes
+app.include_router(health_router, tags=["health"])
 
 
 @app.get("/")

@@ -13,8 +13,14 @@ class ScorecardDashboard {
         // Auto-detect API base URL
         const protocol = window.location.protocol;
         const hostname = window.location.hostname;
-        const port = window.location.hostname === 'localhost' ? ':8000' : '';
-        return `${protocol}//${hostname}${port}`;
+        
+        // Always use port 8000 for API when on localhost
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            return `${protocol}//${hostname}:8000`;
+        }
+        
+        // For production, assume API is on same host
+        return `${protocol}//${hostname}`;
     }
 
     init() {
@@ -64,12 +70,15 @@ class ScorecardDashboard {
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
 
+        console.log('Attempting login with:', { email, baseURL: this.baseURL });
+
         try {
             const response = await axios.post(`${this.baseURL}/auth/login`, {
                 email,
                 password
             });
 
+            console.log('Login successful:', response.data);
             this.token = response.data.access_token;
             localStorage.setItem('authToken', this.token);
             this.setupAxiosDefaults();
@@ -78,7 +87,21 @@ class ScorecardDashboard {
             this.showDashboard();
             this.loadInitialData();
         } catch (error) {
-            this.showAlert('Login failed: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
+            console.error('Login error:', error);
+            let errorMessage = 'Unknown error';
+            
+            if (error.response) {
+                // Server responded with error status
+                errorMessage = error.response.data?.detail || `Server error: ${error.response.status}`;
+            } else if (error.request) {
+                // Request was made but no response received
+                errorMessage = 'Network error - could not connect to server';
+            } else {
+                // Something else happened
+                errorMessage = error.message || 'Unknown error';
+            }
+            
+            this.showAlert('Login failed: ' + errorMessage, 'error');
         }
     }
 
@@ -88,6 +111,8 @@ class ScorecardDashboard {
         const password = document.getElementById('registerPassword').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
 
+        console.log('Attempting registration with:', { email, baseURL: this.baseURL });
+
         // Validate password confirmation
         if (password !== confirmPassword) {
             this.showAlert('Passwords do not match!', 'error');
@@ -95,17 +120,32 @@ class ScorecardDashboard {
         }
 
         try {
-            await axios.post(`${this.baseURL}/auth/register`, {
+            const response = await axios.post(`${this.baseURL}/auth/register`, {
                 email,
                 password
             });
 
+            console.log('Registration successful:', response.data);
             this.showAlert('Registration successful! Please login.', 'success');
             this.switchAuthTab('login');
             // Clear form
             document.getElementById('registerForm').reset();
         } catch (error) {
-            this.showAlert('Registration failed: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
+            console.error('Registration error:', error);
+            let errorMessage = 'Unknown error';
+            
+            if (error.response) {
+                // Server responded with error status
+                errorMessage = error.response.data?.detail || `Server error: ${error.response.status}`;
+            } else if (error.request) {
+                // Request was made but no response received
+                errorMessage = 'Network error - could not connect to server';
+            } else {
+                // Something else happened
+                errorMessage = error.message || 'Unknown error';
+            }
+            
+            this.showAlert('Registration failed: ' + errorMessage, 'error');
         }
     }
 
@@ -196,10 +236,19 @@ class ScorecardDashboard {
     }
 
     switchAuthTab(tab) {
+        // Remove active class from all tabs and tab contents
         document.querySelectorAll('#authSection .tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('#authSection .tab-content').forEach(t => t.classList.remove('active'));
         
-        document.querySelector(`#authSection .tab:nth-child(${tab === 'login' ? 1 : 2})`).classList.add('active');
+        // Add active class to the clicked tab button
+        const tabButtons = document.querySelectorAll('#authSection .tab');
+        if (tab === 'login') {
+            tabButtons[0].classList.add('active');
+        } else if (tab === 'register') {
+            tabButtons[1].classList.add('active');
+        }
+        
+        // Show the corresponding tab content
         document.getElementById(`${tab}Tab`).classList.add('active');
     }
 

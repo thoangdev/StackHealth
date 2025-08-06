@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Debug Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>Authentication Debug Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        const baseURL = 'http://localhost:8000';
+        const results = document.getElementById('results');
+        
+        function log(message) {
+            results.innerHTML += '<p>' + message + '</p>';
+            console.log(message);
+        }
+        
+        async function testAuth() {
+            log('Starting authentication test...');
+            
+            try {
+                // Test login
+                log('Testing login...');
+                const response = await axios.post(`${baseURL}/auth/login`, {
+                    email: 'admin@company.com',
+                    password: 'admin123'
+                });
+                
+                log('✅ Login successful!');
+                log('Token: ' + response.data.access_token.substring(0, 20) + '...');
+                
+                // Test authenticated request
+                axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
+                const userResponse = await axios.get(`${baseURL}/auth/me`);
+                
+                log('✅ User info retrieved: ' + userResponse.data.email);
+                log('User is admin: ' + userResponse.data.is_admin);
+                
+            } catch (error) {
+                log('❌ Auth test failed: ' + error.message);
+                if (error.response) {
+                    log('Response data: ' + JSON.stringify(error.response.data));
+                    log('Status: ' + error.response.status);
+                }
+            }
+        }
+        
+        // Run test automatically
+        testAuth();
+    </script>
+</body>
+</html>

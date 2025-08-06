@@ -21,6 +21,7 @@ help:
 	@echo "api-spec  - Generate API specification for Postman"
 	@echo "test-workflow - Test the GitHub Actions workflow locally"
 	@echo "test-security - Test security scanning tools locally"
+	@echo "test-frontend - Test frontend authentication fixes"
 
 # Development setup
 setup:
@@ -164,3 +165,7 @@ test-workflow:
 test-security:
 	@echo "🔒 Testing security scanning tools locally..."
 	./scripts/test_security_scan.sh
+
+test-frontend:
+	@echo "🌐 Testing frontend authentication fixes..."
+	./scripts/test_frontend_fixes.sh

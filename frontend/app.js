@@ -13,14 +13,20 @@ class ScorecardDashboard {
         // Auto-detect API base URL
         const protocol = window.location.protocol;
         const hostname = window.location.hostname;
+        const port = window.location.port;
         
-        // Always use port 8000 for API when on localhost
+        // When running through Docker on port 3000, use nginx proxy
+        if (port === '3000' || (hostname === 'localhost' && port === '3000')) {
+            return `${protocol}//${hostname}:${port}/api`;
+        }
+        
+        // Direct backend access for development
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
             return `${protocol}//${hostname}:8000`;
         }
         
-        // For production, assume API is on same host
-        return `${protocol}//${hostname}`;
+        // For production, assume API is on same host with /api prefix
+        return `${protocol}//${hostname}/api`;
     }
 
     init() {
@@ -36,27 +42,81 @@ class ScorecardDashboard {
     }
 
     setupEventListeners() {
+        console.log('Setting up event listeners...');
+        
         // Authentication forms
         const loginForm = document.getElementById('loginForm');
         if (loginForm) {
             loginForm.addEventListener('submit', (e) => this.handleLogin(e));
+            console.log('Login form listener attached');
         }
         
         const registerForm = document.getElementById('registerForm');
         if (registerForm) {
             registerForm.addEventListener('submit', (e) => this.handleRegister(e));
+            console.log('Register form listener attached');
         }
         
         // Dashboard forms
         const productForm = document.getElementById('productForm');
         if (productForm) {
             productForm.addEventListener('submit', (e) => this.handleCreateProduct(e));
+            console.log('Product form listener attached');
         }
         
         const scorecardForm = document.getElementById('scorecardForm');
         if (scorecardForm) {
             scorecardForm.addEventListener('submit', (e) => this.handleSubmitScorecard(e));
+            console.log('Scorecard form listener attached');
         }
+        
+        console.log('Event listeners setup complete');
+    }
+
+    setupDashboardEventListeners() {
+        console.log('=== SETTING UP DASHBOARD EVENT LISTENERS ===');
+        
+        // Set up event listeners for dashboard elements that are only available after login
+        const logoutButton = document.getElementById('logoutButton');
+        console.log('Looking for logout button:', logoutButton ? 'found' : 'not found');
+        
+        if (logoutButton) {
+            console.log('Current logout button HTML:', logoutButton.outerHTML);
+            
+            // Remove any existing event listeners by cloning the element
+            const newLogoutButton = logoutButton.cloneNode(true);
+            logoutButton.parentNode.replaceChild(newLogoutButton, logoutButton);
+            
+            // Add new event listener
+            const finalLogoutButton = document.getElementById('logoutButton');
+            finalLogoutButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('=== LOGOUT BUTTON CLICKED VIA EVENT LISTENER ===');
+                this.logout();
+            });
+            
+            console.log('Event listener attached to logout button');
+            
+            // Also test if we can trigger it manually
+            console.log('Testing logout button accessibility...');
+            if (typeof finalLogoutButton.click === 'function') {
+                console.log('Logout button is clickable');
+            } else {
+                console.error('Logout button is not clickable');
+            }
+        } else {
+            console.error('LOGOUT BUTTON NOT FOUND! Searching for possible alternatives...');
+            
+            // Search for any elements that might be the logout button
+            const possibleLogoutElements = document.querySelectorAll('[onclick*="logout"], .logout, #logout');
+            console.log('Found possible logout elements:', possibleLogoutElements);
+            
+            possibleLogoutElements.forEach((el, index) => {
+                console.log(`Element ${index}:`, el.outerHTML);
+            });
+        }
+        
+        console.log('=== DASHBOARD EVENT LISTENERS SETUP COMPLETE ===');
     }
 
     setCurrentDate() {
@@ -107,11 +167,24 @@ class ScorecardDashboard {
 
     async handleRegister(e) {
         e.preventDefault();
+        console.log('Registration form submitted');
+        
         const email = document.getElementById('registerEmail').value;
         const password = document.getElementById('registerPassword').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
 
-        console.log('Attempting registration with:', { email, baseURL: this.baseURL });
+        console.log('Registration data:', { email, baseURL: this.baseURL });
+
+        // Validate inputs
+        if (!email || !email.trim()) {
+            this.showAlert('Email is required', 'error');
+            return;
+        }
+        
+        if (!password) {
+            this.showAlert('Password is required', 'error');
+            return;
+        }
 
         // Validate password confirmation
         if (password !== confirmPassword) {
@@ -121,7 +194,7 @@ class ScorecardDashboard {
 
         try {
             const response = await axios.post(`${this.baseURL}/auth/register`, {
-                email,
+                email: email.trim(),
                 password
             });
 
@@ -137,9 +210,11 @@ class ScorecardDashboard {
             if (error.response) {
                 // Server responded with error status
                 errorMessage = error.response.data?.detail || `Server error: ${error.response.status}`;
+                console.error('Server response:', error.response.data);
             } else if (error.request) {
                 // Request was made but no response received
                 errorMessage = 'Network error - could not connect to server';
+                console.error('Network error:', error.request);
             } else {
                 // Something else happened
                 errorMessage = error.message || 'Unknown error';
@@ -154,12 +229,21 @@ class ScorecardDashboard {
     }
 
     logout() {
+        console.log('=== LOGOUT FUNCTION CALLED ===');
+        console.log('Current token:', this.token ? 'exists' : 'null');
+        console.log('Current user:', this.currentUser);
+        
         this.token = null;
         localStorage.removeItem('authToken');
         delete axios.defaults.headers.common['Authorization'];
         
+        console.log('Token cleared, localStorage cleared, axios headers cleared');
+        console.log('Switching to auth section...');
+        
         this.showAuthSection();
         this.showAlert('Logged out successfully!', 'success');
+        
+        console.log('=== LOGOUT COMPLETE ===');
     }
 
     showAuthSection() {
@@ -168,10 +252,38 @@ class ScorecardDashboard {
     }
 
     showDashboard() {
+        console.log('Showing dashboard...');
         document.getElementById('authSection').classList.add('hidden');
         document.getElementById('mainSection').classList.remove('hidden');
         this.setupAxiosDefaults();
+        this.setupDashboardEventListeners(); // Set up dashboard-specific event listeners
+        this.setupDashboardFormListeners(); // Set up form listeners for dashboard forms
         this.loadCurrentUser();
+    }
+
+    setupDashboardFormListeners() {
+        console.log('Setting up dashboard form listeners...');
+        
+        // Re-setup dashboard forms that might not have existed during initial setup
+        const productForm = document.getElementById('productForm');
+        if (productForm) {
+            // Remove existing listeners
+            productForm.replaceWith(productForm.cloneNode(true));
+            const newProductForm = document.getElementById('productForm');
+            newProductForm.addEventListener('submit', (e) => this.handleCreateProduct(e));
+            console.log('Product form listener re-attached');
+        }
+        
+        const scorecardForm = document.getElementById('scorecardForm');
+        if (scorecardForm) {
+            // Remove existing listeners
+            scorecardForm.replaceWith(scorecardForm.cloneNode(true));
+            const newScorecardForm = document.getElementById('scorecardForm');
+            newScorecardForm.addEventListener('submit', (e) => this.handleSubmitScorecard(e));
+            console.log('Scorecard form listener re-attached');
+        }
+        
+        console.log('Dashboard form listeners setup complete');
     }
 
     async loadCurrentUser() {
@@ -205,10 +317,10 @@ class ScorecardDashboard {
     configureUIForRole() {
         const isAdmin = this.currentUser && this.currentUser.is_admin;
         
-        // Show/hide admin tab
-        const adminTab = document.getElementById('adminTab');
-        if (adminTab) {
-            adminTab.style.display = isAdmin ? 'block' : 'none';
+        // Show/hide admin tab button
+        const adminTabButton = document.getElementById('adminTabButton');
+        if (adminTabButton) {
+            adminTabButton.style.display = isAdmin ? 'block' : 'none';
         }
         
         // Show/hide scorecard creation tab (admin only)
@@ -255,20 +367,46 @@ class ScorecardDashboard {
     // Product Management
     async handleCreateProduct(e) {
         e.preventDefault();
+        console.log('Product creation form submitted');
+        
         const name = document.getElementById('productName').value;
         const description = document.getElementById('productDescription').value;
 
+        console.log('Product data:', { name, description, baseURL: this.baseURL });
+
+        if (!name || !name.trim()) {
+            this.showAlert('Product name is required', 'error');
+            return;
+        }
+
         try {
-            await axios.post(`${this.baseURL}/products`, {
-                name,
-                description
+            const response = await axios.post(`${this.baseURL}/products`, {
+                name: name.trim(),
+                description: description.trim()
             });
 
+            console.log('Product creation response:', response.data);
             this.showAlert('Product created successfully!', 'success');
             document.getElementById('productForm').reset();
-            this.loadProducts();
+            
+            // Reload products and auto-select the new product
+            await this.loadProducts();
+            this.autoSelectNewProduct(response.data.id);
         } catch (error) {
-            this.showAlert('Failed to create product: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
+            console.error('Product creation error:', error);
+            let errorMessage = 'Unknown error';
+            
+            if (error.response) {
+                errorMessage = error.response.data?.detail || `Server error: ${error.response.status}`;
+                console.error('Server response:', error.response.data);
+            } else if (error.request) {
+                errorMessage = 'Network error - could not connect to server';
+                console.error('Network error:', error.request);
+            } else {
+                errorMessage = error.message || 'Unknown error';
+            }
+            
+            this.showAlert('Failed to create product: ' + errorMessage, 'error');
         }
     }
 
@@ -290,10 +428,10 @@ class ScorecardDashboard {
             return;
         }
 
-        container.innerHTML = products.map(product => `
-            <div class="scorecard-item">
+        container.innerHTML = products.map((product, index) => `
+            <div class="scorecard-item ${index === 0 ? 'newest-product' : ''}">
                 <div class="scorecard-header">
-                    <h4>${product.name}</h4>
+                    <h4>${product.name} ${index === 0 ? '<span class="new-badge">Latest</span>' : ''}</h4>
                     <small>Created: ${new Date(product.created_at).toLocaleDateString()}</small>
                 </div>
                 <p>${product.description || 'No description provided'}</p>
@@ -306,6 +444,8 @@ class ScorecardDashboard {
         
         selectors.forEach(selectorId => {
             const selector = document.getElementById(selectorId);
+            if (!selector) return;
+            
             selector.innerHTML = '<option value="">Choose a product...</option>';
             
             products.forEach(product => {
@@ -315,6 +455,24 @@ class ScorecardDashboard {
                 selector.appendChild(option);
             });
         });
+    }
+
+    autoSelectNewProduct(productId) {
+        // Auto-select the newly created product in all selectors
+        const selectors = ['scorecardProduct', 'trendProduct'];
+        
+        selectors.forEach(selectorId => {
+            const selector = document.getElementById(selectorId);
+            if (selector) {
+                selector.value = productId;
+                
+                // Trigger change event if the selector has listeners
+                const event = new Event('change', { bubbles: true });
+                selector.dispatchEvent(event);
+            }
+        });
+        
+        this.showAlert('New product selected in dropdowns', 'success');
     }
 
     // Scorecard Management
@@ -914,42 +1072,97 @@ class ScorecardDashboard {
 // Global functions for HTML onclick handlers
 // Global functions for onclick handlers
 function switchTab(tabName) {
-    dashboard.switchTab(tabName);
+    if (window.dashboard) {
+        window.dashboard.switchTab(tabName);
+    } else {
+        console.error('Dashboard not initialized');
+    }
 }
 
 function showTab(tabName) {
-    dashboard.switchTab(tabName);
+    if (window.dashboard) {
+        window.dashboard.switchTab(tabName);
+    } else {
+        console.error('Dashboard not initialized');
+    }
 }
 
 function switchAuthTab(tabName) {
-    dashboard.switchAuthTab(tabName);
+    if (window.dashboard) {
+        window.dashboard.switchAuthTab(tabName);
+    } else {
+        console.error('Dashboard not initialized');
+    }
 }
 
 function updateScorecardFields() {
-    dashboard.updateScorecardFields();
+    if (window.dashboard) {
+        window.dashboard.updateScorecardFields();
+    } else {
+        console.error('Dashboard not initialized');
+    }
 }
 
 function submitScorecard() {
-    dashboard.handleSubmitScorecard(new Event('submit'));
+    if (window.dashboard) {
+        window.dashboard.handleSubmitScorecard(new Event('submit'));
+    } else {
+        console.error('Dashboard not initialized');
+    }
 }
 
 function loadTrends() {
-    dashboard.loadTrends();
+    if (window.dashboard) {
+        window.dashboard.loadTrends();
+    } else {
+        console.error('Dashboard not initialized');
+    }
 }
 
 function loadUsers() {
-    dashboard.loadUsers();
+    if (window.dashboard) {
+        window.dashboard.loadUsers();
+    } else {
+        console.error('Dashboard not initialized');
+    }
 }
 
 function downloadPDF() {
-    dashboard.downloadPDF();
+    if (window.dashboard) {
+        window.dashboard.downloadPDF();
+    } else {
+        console.error('Dashboard not initialized');
+    }
 }
 
 function logout() {
-    dashboard.logout();
+    console.log('=== GLOBAL LOGOUT FUNCTION CALLED ===');
+    console.log('Window dashboard object:', window.dashboard ? 'exists' : 'missing');
+    
+    if (window.dashboard) {
+        console.log('Dashboard object found, calling dashboard.logout()');
+        window.dashboard.logout();
+    } else {
+        console.error('Dashboard object not found! Attempting fallback logout...');
+        
+        // Fallback: manual logout
+        localStorage.removeItem('authToken');
+        if (window.axios && window.axios.defaults && window.axios.defaults.headers) {
+            delete window.axios.defaults.headers.common['Authorization'];
+        }
+        
+        console.log('Fallback logout completed, reloading page...');
+        location.reload(); // Reload the page to reset the state
+    }
 }
 
 // Initialize the dashboard when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    window.dashboard = new ScorecardDashboard();
+    try {
+        console.log('Initializing dashboard...');
+        window.dashboard = new ScorecardDashboard();
+        console.log('Dashboard initialized successfully');
+    } catch (error) {
+        console.error('Failed to initialize dashboard:', error);
+    }
 });

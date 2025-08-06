@@ -243,9 +243,28 @@
             border-left: 4px solid #667eea;
         }
 
+        .scorecard-item.newest-product {
+            border-left-color: #28a745;
+            background: #f8fff8;
+        }
+
         .scorecard-item h4 {
             margin-bottom: 5px;
             color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .new-badge {
+            background: #28a745;
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .scorecard-item p {
@@ -368,6 +387,81 @@
             cursor: pointer;
         }
 
+        .section {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .section h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .section h4 {
+            color: #555;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            margin: 30px 0;
+            border-radius: 2px;
+        }
+
+        #productsList {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f8f9fa;
+        }
+
+        .scorecard-item {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid #667eea;
+        }
+
+        .scorecard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .scorecard-header h4 {
+            margin: 0;
+            color: #333;
+        }
+
+        .newest-product {
+            border-left-color: #28a745;
+            background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+        }
+
+        .new-badge {
+            background: #28a745;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
         @media (max-width: 768px) {
             .form-row {
                 grid-template-columns: 1fr;
@@ -458,7 +552,7 @@
                     <strong>Welcome, <span id="userEmail"></span></strong>
                     <br><small>Software Scorecard Administrator</small>
                 </div>
-                <button class="btn btn-secondary" onclick="logout()" style="width: auto; padding: 8px 16px;">Sign Out</button>
+                <button class="btn btn-secondary" onclick="logout()" style="width: auto; padding: 8px 16px;" id="logoutButton">Sign Out</button>
             </div>
 
             <div class="main-container">
@@ -466,68 +560,103 @@
                     <button class="tab active" onclick="showTab('scorecard')">📊 New Scorecard</button>
                     <button class="tab" onclick="showTab('dashboard')">📈 Dashboard</button>
                     <button class="tab" onclick="showTab('trends')">📉 Trends</button>
-                    <button class="tab" id="adminTab" onclick="showTab('admin')" style="display: none;">👥 Admin</button>
+                    <button class="tab" id="adminTabButton" onclick="showTab('admin')" style="display: none;">👥 Admin</button>
                 </div>
 
                 <!-- Scorecard Creation Tab -->
                 <div id="scorecardTab" class="tab-content active">
                     <h2>Create New Scorecard Assessment</h2>
                     
-                    <form id="scorecardForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="productSelect">Product</label>
-                                <select id="productSelect" required>
-                                    <option value="">Select Product...</option>
-                                </select>
+                    <!-- Product Creation Section -->
+                    <div class="section">
+                        <h3>📦 Create New Product</h3>
+                        <form id="productForm">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="productName">Product Name *</label>
+                                    <input type="text" id="productName" placeholder="Enter product name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="productDescription">Description</label>
+                                    <textarea id="productDescription" placeholder="Optional product description" rows="2"></textarea>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="categorySelect">Category</label>
-                                <select id="categorySelect" required>
-                                    <option value="">Select Category...</option>
-                                    <option value="Security">🔒 Security Assessment</option>
-                                    <option value="Automation">🤖 Automation</option>
-                                    <option value="Performance">⚡ Performance</option>
-                                    <option value="CI/CD">🔄 CI/CD Pipeline</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div id="scoringForm"></div>
+                            <button type="submit" class="btn btn-primary">Create Product</button>
+                        </form>
                         
-                        <button type="submit" class="btn">Generate Assessment Report</button>
-                    </form>
+                        <!-- Products List -->
+                        <div style="margin-top: 20px;">
+                            <h4>Existing Products</h4>
+                            <div id="productsList"></div>
+                        </div>
+                    </div>
+                    
+                    <hr style="margin: 30px 0;">
+                    
+                    <!-- Scorecard Assessment Section -->
+                    <div class="section">
+                        <h3>📊 Create Assessment</h3>
+                        <form id="scorecardForm">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="scorecardProduct">Product *</label>
+                                    <select id="scorecardProduct" required>
+                                        <option value="">Choose a product...</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="scorecardCategory">Category *</label>
+                                    <select id="scorecardCategory" onchange="updateScorecardFields()" required>
+                                        <option value="">Choose a category...</option>
+                                        <option value="security">🔒 Security Assessment</option>
+                                        <option value="automation">🤖 Automation</option>
+                                        <option value="performance">⚡ Performance</option>
+                                        <option value="cicd">🔄 CI/CD Pipeline</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="scorecardDate">Assessment Date *</label>
+                                    <input type="date" id="scorecardDate" required>
+                                </div>
+                            </div>
+
+                            <div id="scorecardFields"></div>
+                            
+                            <button type="submit" class="btn btn-primary">Generate Assessment Report</button>
+                        </form>
+                    </div>
                 </div>
 
                 <!-- Dashboard Tab -->
                 <div id="dashboardTab" class="tab-content">
-                    <h2>Assessment Dashboard</h2>
-                    <div id="dashboardContent" class="loading">Loading dashboard data...</div>
+                    <h2>📈 Assessment Dashboard</h2>
+                    <div id="scorecardsList"></div>
                 </div>
 
                 <!-- Trends Tab -->
                 <div id="trendsTab" class="tab-content">
-                    <h2>Trend Analysis</h2>
+                    <h2>📉 Trend Analysis</h2>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="trendProduct">Product</label>
-                            <select id="trendProduct">
-                                <option value="">All Products</option>
+                            <select id="trendProduct" onchange="loadTrends()">
+                                <option value="">Choose a product...</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="trendCategory">Category</label>
-                            <select id="trendCategory">
-                                <option value="">All Categories</option>
-                                <option value="Security">Security</option>
-                                <option value="Automation">Automation</option>
-                                <option value="Performance">Performance</option>
-                                <option value="CI/CD">CI/CD</option>
+                            <select id="trendCategory" onchange="loadTrends()">
+                                <option value="">Choose a category...</option>
+                                <option value="security">Security</option>
+                                <option value="automation">Automation</option>
+                                <option value="performance">Performance</option>
+                                <option value="cicd">CI/CD</option>
                             </select>
                         </div>
                     </div>
-                    <button class="btn" onclick="loadTrends()">Generate Trend Report</button>
-                    <div id="trendsContent"></div>
+                    <div style="margin-top: 20px;">
+                        <canvas id="trendChart" width="400" height="200"></canvas>
+                    </div>
                 </div>
 
                 <!-- Admin Tab -->

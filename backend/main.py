@@ -10,6 +10,11 @@ import database
 import auth
 from pdf_generator import generate_pdf_report
 from health import router as health_router
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Software Scorecard Dashboard API",
@@ -27,6 +32,17 @@ app.add_middleware(
 )
 
 security = HTTPBearer()
+
+# Startup event to seed database
+@app.on_event("startup")
+async def startup_event():
+    """Run database seeding on application startup"""
+    try:
+        from seed_data import seed_database
+        seed_database()
+    except Exception as e:
+        logger.error(f"Failed to seed database: {e}")
+        # Don't fail startup if seeding fails
 
 # Include health check routes
 app.include_router(health_router, tags=["health"])

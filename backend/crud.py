@@ -19,8 +19,8 @@ def create_product(db: Session, product: schemas.ProductCreate) -> database.Prod
 
 
 def get_products(db: Session, skip: int = 0, limit: int = 100) -> List[database.Product]:
-    """Get all products"""
-    return db.query(database.Product).offset(skip).limit(limit).all()
+    """Get all products ordered by creation date (newest first)"""
+    return db.query(database.Product).order_by(database.Product.created_at.desc()).offset(skip).limit(limit).all()
 
 
 def get_product_by_id(db: Session, product_id: int) -> Optional[database.Product]:

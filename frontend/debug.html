@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>StackHealth Debug</title>
+</head>
+<body>
+    <h1>Debug Information</h1>
+    <div id="debug-info">
+        <p>Loading debug information...</p>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const debugDiv = document.getElementById('debug-info');
+            
+            // Test if we can detect the API URL correctly
+            const protocol = window.location.protocol;
+            const hostname = window.location.hostname;
+            const port = window.location.port;
+            
+            let baseURL;
+            if (port === '3000' || (hostname === 'localhost' && port === '3000')) {
+                baseURL = `${protocol}//${hostname}:${port}/api`;
+            } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                baseURL = `${protocol}//${hostname}:8000`;
+            } else {
+                baseURL = `${protocol}//${hostname}/api`;
+            }
+            
+            debugDiv.innerHTML = `
+                <h3>Environment Detection:</h3>
+                <p><strong>Protocol:</strong> ${protocol}</p>
+                <p><strong>Hostname:</strong> ${hostname}</p>
+                <p><strong>Port:</strong> ${port}</p>
+                <p><strong>Detected Base URL:</strong> ${baseURL}</p>
+                
+                <h3>API Test:</h3>
+                <button onclick="testAPI()">Test API Connection</button>
+                <div id="api-result"></div>
+            `;
+            
+            window.testAPI = async function() {
+                const resultDiv = document.getElementById('api-result');
+                resultDiv.innerHTML = '<p>Testing API...</p>';
+                
+                try {
+                    const response = await axios.get(`${baseURL}/`);
+                    resultDiv.innerHTML = `<p style="color: green;">✅ API Connection Successful: ${JSON.stringify(response.data)}</p>`;
+                } catch (error) {
+                    resultDiv.innerHTML = `<p style="color: red;">❌ API Connection Failed: ${error.message}</p>`;
+                    console.error('API Test Error:', error);
+                }
+            };
+        });
+    </script>
+</body>
+</html>

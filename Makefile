@@ -18,6 +18,7 @@ help:
 	@echo "deploy    - Deploy with Docker Compose"
 	@echo "health    - Check application health"
 	@echo "pre-commit- Run pre-commit hooks on all files"
+	@echo "api-spec  - Generate API specification for Postman"
 
 # Development setup
 setup:
@@ -130,3 +131,26 @@ reports:
 	mv backend/htmlcov reports/
 	mv backend/coverage.xml reports/
 	@echo "📊 Reports generated in reports/ directory"
+
+# API Specification
+api-spec:
+	@echo "📋 Generating API specification..."
+	@if ! curl -f http://localhost:8000/health >/dev/null 2>&1; then \
+		echo "❌ API server not running. Start it with 'make dev' first."; \
+		exit 1; \
+	fi
+	python3 scripts/generate_api_spec.py http://localhost:8000
+	@echo "✅ API specification generated in api-spec/ directory"
+	@echo "📁 Files created:"
+	@echo "   - stackhealth-api-collection.json (Postman collection)"
+	@echo "   - openapi.json (OpenAPI specification)"
+	@echo "💡 Import the Postman collection to test your API!"
+
+api-spec-advanced:
+	@echo "📋 Generating advanced API specification..."
+	@if ! curl -f http://localhost:8000/health >/dev/null 2>&1; then \
+		echo "❌ API server not running. Start it with 'make dev' first."; \
+		exit 1; \
+	fi
+	python3 scripts/generate_postman_collection.py --url http://localhost:8000
+	@echo "✅ Advanced API specification generated!"

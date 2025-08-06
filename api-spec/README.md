@@ -98,10 +98,15 @@ Valid categories for scorecards:
 
 This specification is automatically updated whenever code is pushed to the main branch via GitHub Actions. The workflow:
 
-1. Starts the FastAPI server
-2. Fetches the OpenAPI specification
-3. Converts it to Postman collection format
-4. Commits updated files back to the repository
+1. Clones the repository and checks out the latest code
+2. Sets up Python (using the pre-installed Python 3 on Ubuntu)
+3. Installs FastAPI dependencies
+4. Starts the FastAPI server
+5. Fetches the OpenAPI specification
+6. Converts it to Postman collection format
+7. Commits updated files back to the repository
+
+**Note**: This workflow uses only basic GitHub Actions functionality and doesn't rely on external marketplace actions, making it compatible with repositories that have restricted action permissions.
 
 ## Local Generation
 

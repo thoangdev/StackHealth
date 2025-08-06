@@ -19,6 +19,8 @@ help:
 	@echo "health    - Check application health"
 	@echo "pre-commit- Run pre-commit hooks on all files"
 	@echo "api-spec  - Generate API specification for Postman"
+	@echo "test-workflow - Test the GitHub Actions workflow locally"
+	@echo "test-security - Test security scanning tools locally"
 
 # Development setup
 setup:
@@ -154,3 +156,11 @@ api-spec-advanced:
 	fi
 	python3 scripts/generate_postman_collection.py --url http://localhost:8000
 	@echo "✅ Advanced API specification generated!"
+
+test-workflow:
+	@echo "🧪 Testing GitHub Actions workflow locally..."
+	./scripts/test_workflow.sh
+
+test-security:
+	@echo "🔒 Testing security scanning tools locally..."
+	./scripts/test_security_scan.sh
